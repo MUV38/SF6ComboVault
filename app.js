@@ -62,6 +62,25 @@ const commandGroups = {
 
 const directionCommands = new Set(commandGroups.motion.commands);
 const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
+const commandDisplayMap = {
+  "1": "↙",
+  "2": "↓",
+  "3": "↘",
+  "4": "←",
+  "5": "・",
+  "6": "→",
+  "7": "↖",
+  "8": "↑",
+  "9": "↗",
+  "22": "↓↓",
+  "44": "←←",
+  "66": "→→",
+  "214": "↓↙←",
+  "236": "↓↘→",
+  "421": "←↓↙",
+  "623": "→↓↘",
+  "j.": "J"
+};
 
 const state = {
   combos: [],
@@ -378,7 +397,7 @@ function renderCommandTabs() {
 function renderCommandButtons() {
   const group = commandGroups[state.activeCommandGroup];
   els.commandButtons.innerHTML = group.commands
-    .map((command) => `<button class="command-button" type="button" data-command="${escapeHtml(command)}">${escapeHtml(command)}</button>`)
+    .map((command) => `<button class="command-button" type="button" data-command="${escapeHtml(command)}">${escapeHtml(formatCommandValue(command))}</button>`)
     .join("");
 
   els.commandButtons.querySelectorAll("button").forEach((button) => {
@@ -843,7 +862,25 @@ function canMergeAsMove(current, next) {
 
 function renderToken(step) {
   const type = ["motion", "attack", "system", "move"].includes(step.type) ? step.type : "system";
-  return `<span class="token ${type}">${escapeHtml(step.value)}</span>`;
+  return `<span class="token ${type}">${escapeHtml(formatStepValue(step))}</span>`;
+}
+
+function formatStepValue(step) {
+  if (step.type === "motion") return formatCommandValue(step.value);
+  if (step.type === "move") return formatMoveValue(step.value);
+  return step.value;
+}
+
+function formatMoveValue(value) {
+  const direction = [...directionCommands]
+    .sort((a, b) => b.length - a.length)
+    .find((command) => value.startsWith(command));
+  if (!direction) return value;
+  return `${formatCommandValue(direction)}${value.slice(direction.length)}`;
+}
+
+function formatCommandValue(value) {
+  return commandDisplayMap[value] || value;
 }
 
 function escapeHtml(value) {

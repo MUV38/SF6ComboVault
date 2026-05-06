@@ -410,6 +410,7 @@ button:focus-visible {
 
 .token {
   padding: 0 10px;
+  letter-spacing: 0;
 }
 
 .token.motion {
@@ -565,6 +566,7 @@ button:focus-visible {
 
 .command-button {
   min-height: 50px;
+  letter-spacing: 0;
 }
 
 .favorite-toggle.active,
