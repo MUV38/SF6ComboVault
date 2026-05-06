@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-5" />
+    <link rel="stylesheet" href="styles.css?v=20260506-9" />
   </head>
   <body>
     <div class="app-shell">
@@ -13,10 +13,7 @@
           <p class="eyebrow">Street Fighter 6</p>
           <h1>Combo Vault</h1>
         </div>
-        <nav class="page-nav" aria-label="ページ切り替え">
-          <a class="nav-link" id="charactersPageLink" href="#characters">
-            <span>キャラ選択</span>
-          </a>
+        <nav class="page-nav" id="workflowNav" aria-label="ページ切り替え" hidden>
           <a class="nav-link" id="createPageLink" href="#create">
             <span>コンボ作成</span>
           </a>
@@ -27,6 +24,7 @@
             <span>キャラメモ</span>
           </a>
         </nav>
+        <button class="text-button" id="changeCharacterButton" type="button" hidden>キャラ変更</button>
       </header>
 
       <main class="workspace single-page">
@@ -36,7 +34,10 @@
               <p class="eyebrow">Choose Fighter</p>
               <h2 id="characters-title">キャラ選択</h2>
             </div>
-            <span class="selected-character-pill" id="selectedCharacterPill">未選択</span>
+            <div class="heading-actions">
+              <button class="ghost-button" id="exportVaultButton" type="button">保存データ共有</button>
+              <button class="ghost-button" id="importVaultButton" type="button">読み込み</button>
+            </div>
           </div>
 
           <div class="character-picker-body">
@@ -199,6 +200,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260506-5"></script>
+    <script src="app.js?v=20260506-9"></script>
   </body>
 </html>

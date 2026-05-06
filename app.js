@@ -62,6 +62,34 @@ const commandGroups = {
 
 const directionCommands = new Set(commandGroups.motion.commands);
 const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
+const commandDisplayMap = {
+  "1": "↙",
+  "2": "↓",
+  "3": "↘",
+  "4": "←",
+  "5": "・",
+  "6": "→",
+  "7": "↖",
+  "8": "↑",
+  "9": "↗",
+  "22": "↓↓",
+  "44": "←←",
+  "66": "→→",
+  "214": "↓↙←",
+  "236": "↓↘→",
+  "421": "←↓↙",
+  "623": "→↓↘",
+  "j.": "J"
+};
+
+const attackDisplayMap = {
+  LP: "弱P",
+  MP: "中P",
+  HP: "強P",
+  LK: "弱K",
+  MK: "中K",
+  HK: "強K"
+};
 
 const state = {
   combos: [],
@@ -85,12 +113,14 @@ const els = {
   createPage: $("#create"),
   libraryPage: $("#library"),
   notesPage: $("#notes"),
-  charactersPageLink: $("#charactersPageLink"),
+  workflowNav: $("#workflowNav"),
+  changeCharacterButton: $("#changeCharacterButton"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
   notesPageLink: $("#notesPageLink"),
   characterGrid: $("#characterGrid"),
-  selectedCharacterPill: $("#selectedCharacterPill"),
+  exportVaultButton: $("#exportVaultButton"),
+  importVaultButton: $("#importVaultButton"),
   form: $("#comboForm"),
   characterNoteForm: $("#characterNoteForm"),
   editingId: $("#editingId"),
@@ -127,7 +157,7 @@ function init() {
   state.combos = loadCombos();
   state.characterNotes = loadCharacterNotes();
   state.selectedCharacter = loadSelectedCharacter();
-  hydrateSharedCombo(false);
+  hydrateSharedData(false);
   renderCharacterOptions();
   renderCharacterGrid();
   applySelectedCharacter(false);
@@ -145,10 +175,9 @@ function init() {
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
   window.addEventListener("popstate", showCurrentPage);
-  els.charactersPageLink.addEventListener("click", (event) => {
-    event.preventDefault();
-    goToPage("characters");
-  });
+  els.changeCharacterButton.addEventListener("click", () => goToPage("characters"));
+  els.exportVaultButton.addEventListener("click", exportVaultData);
+  els.importVaultButton.addEventListener("click", () => hydrateSharedData(true));
   els.createPageLink.addEventListener("click", (event) => {
     event.preventDefault();
     goToPage("create");
@@ -179,7 +208,7 @@ function bindEvents() {
   });
   els.cancelEditButton.addEventListener("click", resetForm);
   els.newComboButton.addEventListener("click", resetForm);
-  els.importSharedButton.addEventListener("click", () => hydrateSharedCombo(true));
+  els.importSharedButton.addEventListener("click", () => hydrateSharedData(true));
   els.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value.trim().toLowerCase();
     renderList();
@@ -210,11 +239,11 @@ function renderPage(page) {
   els.createPage.hidden = isCharacters || isLibrary || isNotes;
   els.libraryPage.hidden = !isLibrary;
   els.notesPage.hidden = !isNotes;
-  els.charactersPageLink.classList.toggle("active", isCharacters);
+  els.workflowNav.hidden = isCharacters;
+  els.changeCharacterButton.hidden = isCharacters;
   els.createPageLink.classList.toggle("active", !isCharacters && !isLibrary && !isNotes);
   els.libraryPageLink.classList.toggle("active", isLibrary);
   els.notesPageLink.classList.toggle("active", isNotes);
-  setCurrentPageLink(els.charactersPageLink, isCharacters);
   setCurrentPageLink(els.createPageLink, !isCharacters && !isLibrary && !isNotes);
   setCurrentPageLink(els.libraryPageLink, isLibrary);
   setCurrentPageLink(els.notesPageLink, isNotes);
@@ -299,6 +328,8 @@ function loadSelectedCharacter() {
 function persistSelectedCharacter() {
   if (state.selectedCharacter) {
     localStorage.setItem(SELECTED_CHARACTER_STORAGE_KEY, state.selectedCharacter);
+  } else {
+    localStorage.removeItem(SELECTED_CHARACTER_STORAGE_KEY);
   }
 }
 
@@ -348,7 +379,6 @@ function applySelectedCharacter(renderAfterApply = true) {
 
 function renderSelectedCharacterLabels() {
   const label = state.selectedCharacter || "未選択";
-  els.selectedCharacterPill.textContent = label;
   selectedCharacterLabels.forEach((element) => {
     element.textContent = label;
   });
@@ -376,7 +406,7 @@ function renderCommandTabs() {
 function renderCommandButtons() {
   const group = commandGroups[state.activeCommandGroup];
   els.commandButtons.innerHTML = group.commands
-    .map((command) => `<button class="command-button" type="button" data-command="${escapeHtml(command)}">${escapeHtml(command)}</button>`)
+    .map((command) => `<button class="command-button command-${state.activeCommandGroup}" type="button" data-command="${escapeHtml(command)}">${renderCommandInput(command, state.activeCommandGroup)}</button>`)
     .join("");
 
   els.commandButtons.querySelectorAll("button").forEach((button) => {
@@ -574,7 +604,7 @@ async function shareCombo(id) {
   const combo = state.combos.find((item) => item.id === id);
   if (!combo) return;
 
-  const payload = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(combo)))));
+  const payload = encodePayload(combo);
   const shareUrl = new URL(location.href);
   shareUrl.searchParams.set("combo", payload);
   shareUrl.hash = "create";
@@ -595,6 +625,27 @@ async function copySavedComboLink(id) {
     showToast("コンボへのリンクをコピーしました");
   } catch {
     prompt("コンボへのリンク", url);
+  }
+}
+
+async function exportVaultData() {
+  const payload = {
+    version: 1,
+    combos: state.combos,
+    characterNotes: state.characterNotes,
+    selectedCharacter: state.selectedCharacter
+  };
+  const url = new URL(location.href);
+  url.searchParams.set("vault", encodePayload(payload));
+  url.searchParams.delete("combo");
+  url.searchParams.delete("saved");
+  url.hash = "characters";
+
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    showToast("保存データ共有URLをコピーしました");
+  } catch {
+    prompt("保存データ共有URL", url.toString());
   }
 }
 
@@ -689,8 +740,14 @@ function unlinkDeletedCombo(comboId) {
   });
 }
 
-function hydrateSharedCombo(notifyWhenMissing = true) {
+function hydrateSharedData(notifyWhenMissing = true) {
   const params = new URLSearchParams(location.search);
+  const vault = params.get("vault");
+  if (vault) {
+    hydrateSharedVault(vault);
+    return;
+  }
+
   const shared = params.get("combo");
   if (!shared) {
     if (notifyWhenMissing) showToast("共有URLのデータがありません");
@@ -698,7 +755,7 @@ function hydrateSharedCombo(notifyWhenMissing = true) {
   }
 
   try {
-    const combo = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(shared)))));
+    const combo = decodePayload(shared);
     if (!isComboLike(combo)) throw new Error("Invalid combo payload");
 
     const normalizedCombo = normalizeCombo(combo);
@@ -718,6 +775,38 @@ function hydrateSharedCombo(notifyWhenMissing = true) {
   } catch {
     showToast("共有データを読み込めませんでした");
   }
+}
+
+function hydrateSharedVault(shared) {
+  try {
+    const vault = decodePayload(shared);
+    if (!vault || !Array.isArray(vault.combos)) throw new Error("Invalid vault payload");
+
+    state.combos = vault.combos.filter(isComboLike).map(normalizeCombo);
+    state.characterNotes = vault.characterNotes && typeof vault.characterNotes === "object" ? vault.characterNotes : {};
+    state.selectedCharacter = characters.includes(vault.selectedCharacter) ? vault.selectedCharacter : "";
+    persist();
+    persistCharacterNotes();
+    persistSelectedCharacter();
+
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete("vault");
+    history.replaceState(null, "", cleanUrl.toString());
+    applySelectedCharacter();
+    renderCharacterGrid();
+    showToast("保存データを取り込みました");
+    goToPage(state.selectedCharacter ? "library" : "characters");
+  } catch {
+    showToast("保存データを読み込めませんでした");
+  }
+}
+
+function encodePayload(payload) {
+  return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+}
+
+function decodePayload(payload) {
+  return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(payload)))));
 }
 
 function normalizeCombo(combo) {
@@ -782,7 +871,63 @@ function canMergeAsMove(current, next) {
 
 function renderToken(step) {
   const type = ["motion", "attack", "system", "move"].includes(step.type) ? step.type : "system";
-  return `<span class="token ${type}">${escapeHtml(step.value)}</span>`;
+  return `<span class="token ${type}">${renderCommandInput(step.value, type)}</span>`;
+}
+
+function renderCommandInput(value, type) {
+  if (type === "motion") return renderMotionInput(value);
+  if (type === "attack") return renderAttackInput(value);
+  if (type === "move") return renderMoveInput(value);
+  return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+}
+
+function renderMoveInput(value) {
+  const direction = [...directionCommands]
+    .sort((a, b) => b.length - a.length)
+    .find((command) => value.startsWith(command));
+  if (!direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+  return `${renderMotionInput(direction)}<span class="input-plus">+</span>${renderAttackInput(value.slice(direction.length))}`;
+}
+
+function renderMotionInput(value) {
+  return [...formatCommandValue(value)]
+    .map((direction) => `<span class="input-key input-dir">${escapeHtml(direction)}</span>`)
+    .join("");
+}
+
+function renderAttackInput(value) {
+  const attackType = getAttackInputType(value);
+  const parts = getAttackInputParts(value);
+  if (!parts) {
+    return `<span class="input-key input-attack input-${attackType}">${escapeHtml(formatAttackValue(value))}</span>`;
+  }
+  return `<span class="input-key input-attack input-${attackType}"><span class="attack-strength">${escapeHtml(parts.strength)}</span><span class="attack-mark">${escapeHtml(parts.mark)}</span></span>`;
+}
+
+function formatCommandValue(value) {
+  return commandDisplayMap[value] || value;
+}
+
+function formatAttackValue(value) {
+  return attackDisplayMap[value] || value;
+}
+
+function getAttackInputType(value) {
+  if (value.includes("P")) return "punch";
+  if (value.includes("K")) return "kick";
+  if (value === "投げ") return "throw";
+  if (value === "OD") return "drive";
+  return "system";
+}
+
+function getAttackInputParts(value) {
+  const label = formatAttackValue(value);
+  const match = label.match(/^(.+)([PK])$/);
+  if (!match) return null;
+  return {
+    strength: match[1],
+    mark: match[2]
+  };
 }
 
 function escapeHtml(value) {
