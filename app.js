@@ -55,6 +55,9 @@ const commandGroups = {
   }
 };
 
+const directionCommands = new Set(commandGroups.motion.commands);
+const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
+
 const state = {
   combos: [],
   recipe: [],
@@ -234,7 +237,7 @@ function renderRecipe() {
   }
 
   els.recipePreview.className = "recipe-preview";
-  els.recipePreview.innerHTML = state.recipe.map(renderToken).join("");
+  els.recipePreview.innerHTML = groupRecipeForDisplay(state.recipe).map(renderToken).join("");
 }
 
 function renderFavoriteDraft() {
@@ -274,7 +277,7 @@ function renderList() {
     card.querySelector("h3").textContent = combo.title;
     card.querySelector(".favorite-card").textContent = combo.favorite ? "★" : "☆";
     card.querySelector(".favorite-card").classList.toggle("active", combo.favorite);
-    card.querySelector(".card-recipe").innerHTML = combo.recipe.map(renderToken).join("");
+    card.querySelector(".card-recipe").innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
     card.querySelector(".card-tags").innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
 
     const notes = card.querySelector(".card-notes");
@@ -463,8 +466,38 @@ function parseTags(value) {
   return [...new Set(value.split(/[,\s、]+/).map((tag) => tag.trim()).filter(Boolean))];
 }
 
+function groupRecipeForDisplay(recipe) {
+  const grouped = [];
+
+  for (let index = 0; index < recipe.length; index += 1) {
+    const current = recipe[index];
+    const next = recipe[index + 1];
+
+    if (canMergeAsMove(current, next)) {
+      grouped.push({
+        value: `${current.value}${next.value}`,
+        type: "move"
+      });
+      index += 1;
+    } else {
+      grouped.push(current);
+    }
+  }
+
+  return grouped;
+}
+
+function canMergeAsMove(current, next) {
+  return current
+    && next
+    && current.type === "motion"
+    && next.type === "attack"
+    && directionCommands.has(current.value)
+    && attackCommands.has(next.value);
+}
+
 function renderToken(step) {
-  const type = ["motion", "attack", "system"].includes(step.type) ? step.type : "system";
+  const type = ["motion", "attack", "system", "move"].includes(step.type) ? step.type : "system";
   return `<span class="token ${type}">${escapeHtml(step.value)}</span>`;
 }
 
