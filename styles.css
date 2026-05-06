@@ -371,6 +371,12 @@ textarea {
   outline: none;
 }
 
+select:disabled {
+  color: var(--text);
+  opacity: 1;
+  cursor: default;
+}
+
 select {
   padding-right: 34px;
 }

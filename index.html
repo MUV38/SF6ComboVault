@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-10" />
+    <link rel="stylesheet" href="styles.css?v=20260506-13" />
   </head>
   <body>
     <div class="app-shell">
@@ -68,7 +68,7 @@
             <div class="field-grid">
               <label>
                 <span>キャラ</span>
-                <select id="characterInput" required></select>
+                <select id="characterInput" required disabled></select>
               </label>
               <label>
                 <span>タイトル</span>
@@ -128,7 +128,7 @@
               <input id="searchInput" type="search" placeholder="キャラ・タグ・コマンドで検索" />
             </label>
             <div class="filter-row">
-              <select id="characterFilter"></select>
+              <select id="characterFilter" hidden disabled></select>
               <button class="toggle-button" id="favoriteFilter" type="button" aria-pressed="false">★のみ</button>
             </div>
             <div class="tag-filter" id="tagFilter"></div>
@@ -150,7 +150,7 @@
             <div class="field-grid">
               <label>
                 <span>キャラ</span>
-                <select id="noteCharacterInput"></select>
+                <select id="noteCharacterInput" disabled></select>
               </label>
               <div class="note-summary" id="noteSummary"></div>
             </div>
@@ -200,6 +200,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260506-10"></script>
+    <script src="app.js?v=20260506-13"></script>
   </body>
 </html>

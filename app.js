@@ -62,12 +62,13 @@ const commandGroups = {
 
 const directionCommands = new Set(commandGroups.motion.commands);
 const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
+const odCommand = "OD";
 const commandDisplayMap = {
   "1": "↙",
   "2": "↓",
   "3": "↘",
   "4": "←",
-  "5": "・",
+  "5": "N",
   "6": "→",
   "7": "↖",
   "8": "↑",
@@ -192,8 +193,6 @@ function bindEvents() {
   });
   els.form.addEventListener("submit", saveCombo);
   els.characterNoteForm.addEventListener("submit", saveCharacterNote);
-  els.noteCharacterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
-  els.characterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
     renderFavoriteDraft();
@@ -211,11 +210,6 @@ function bindEvents() {
   els.importSharedButton.addEventListener("click", () => hydrateSharedData(true));
   els.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value.trim().toLowerCase();
-    renderList();
-  });
-  els.characterFilter.addEventListener("change", (event) => {
-    state.filters.character = event.target.value;
-    if (event.target.value !== "all") selectCharacter(event.target.value, false);
     renderList();
   });
   els.favoriteFilter.addEventListener("click", () => {
@@ -422,7 +416,7 @@ function addRecipeStep(step) {
 
   if (canMergeAsMove(previous, step)) {
     state.recipe[state.recipe.length - 1] = {
-      value: `${previous.value}${step.value}`,
+      value: mergeMoveValue(previous, step),
       type: "move"
     };
     return;
@@ -521,6 +515,12 @@ function filteredCombos() {
 function saveCombo(event) {
   event.preventDefault();
 
+  if (!state.selectedCharacter) {
+    goToPage("characters");
+    showToast("キャラを選択してください");
+    return;
+  }
+
   if (!state.recipe.length) {
     showToast("コマンドを1つ以上選択してください");
     return;
@@ -528,10 +528,9 @@ function saveCombo(event) {
 
   const editingId = els.editingId.value;
   const now = Date.now();
-  if (!state.selectedCharacter) selectCharacter(els.characterInput.value, false);
   const combo = {
     id: editingId || crypto.randomUUID(),
-    character: els.characterInput.value,
+    character: state.selectedCharacter,
     title: els.titleInput.value.trim(),
     tags: parseTags(els.tagsInput.value),
     notes: els.notesInput.value.trim(),
@@ -575,6 +574,7 @@ function resetForm() {
   els.editingId.value = "";
   state.recipe = [];
   state.favoriteDraft = false;
+  applySelectedCharacter(false);
   renderRecipe();
   renderFavoriteDraft();
 }
@@ -650,7 +650,7 @@ async function exportVaultData() {
 }
 
 function renderCharacterNote() {
-  const character = els.noteCharacterInput.value || characters[0];
+  const character = state.selectedCharacter || characters[0];
   const note = getCharacterNote(character);
   const characterCombos = state.combos.filter((combo) => combo.character === character);
   const linkedCombos = characterCombos.filter((combo) => note.comboIds.includes(combo.id));
@@ -669,7 +669,12 @@ function getCharacterNote(character) {
 
 function saveCharacterNote(event) {
   event.preventDefault();
-  const character = els.noteCharacterInput.value;
+  const character = state.selectedCharacter;
+  if (!character) {
+    goToPage("characters");
+    showToast("キャラを選択してください");
+    return;
+  }
   const current = getCharacterNote(character);
   state.characterNotes[character] = {
     text: els.characterNoteInput.value.trim(),
@@ -763,11 +768,16 @@ function hydrateSharedData(notifyWhenMissing = true) {
     normalizedCombo.createdAt = Date.now();
     normalizedCombo.updatedAt = Date.now();
     state.combos = [normalizedCombo, ...state.combos];
+    if (characters.includes(normalizedCombo.character)) {
+      state.selectedCharacter = normalizedCombo.character;
+      persistSelectedCharacter();
+    }
     persist();
 
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete("combo");
     history.replaceState(null, "", cleanUrl.toString());
+    applySelectedCharacter();
     renderFilters();
     renderList();
     showToast("共有コンボを取り込みました");
@@ -847,10 +857,22 @@ function groupRecipeForDisplay(recipe) {
     const next = recipe[index + 1];
 
     if (canMergeAsMove(current, next)) {
-      grouped.push({
-        value: `${current.value}${next.value}`,
+      const merged = {
+        value: mergeMoveValue(current, next),
         type: "move"
-      });
+      };
+      const afterNext = recipe[index + 2];
+
+      if (canMergeAsMove(merged, afterNext)) {
+        grouped.push({
+          value: mergeMoveValue(merged, afterNext),
+          type: "move"
+        });
+        index += 2;
+        continue;
+      }
+
+      grouped.push(merged);
       index += 1;
     } else {
       grouped.push(current);
@@ -861,12 +883,35 @@ function groupRecipeForDisplay(recipe) {
 }
 
 function canMergeAsMove(current, next) {
-  return current
-    && next
-    && current.type === "motion"
-    && next.type === "attack"
-    && directionCommands.has(current.value)
-    && attackCommands.has(next.value);
+  if (!current || !next) return false;
+
+  return (isMotionStep(current) && isAttackStep(next))
+    || (isOdStep(current) && isMotionStep(next))
+    || (isOdMotionStep(current) && isAttackStep(next));
+}
+
+function mergeMoveValue(current, next) {
+  return `${current.value}${next.value}`;
+}
+
+function isMotionStep(step) {
+  return step.type === "motion" && directionCommands.has(step.value);
+}
+
+function isAttackStep(step) {
+  return step.type === "attack" && attackCommands.has(step.value);
+}
+
+function isOdStep(step) {
+  return step.type === "attack" && step.value === odCommand;
+}
+
+function isOdMotionStep(step) {
+  const parsed = parseMoveValue(step.value);
+  return step.type === "move"
+    && step.value.startsWith(odCommand)
+    && parsed.direction
+    && !parsed.attack;
 }
 
 function renderToken(step) {
@@ -890,11 +935,37 @@ function renderCommandButtonInput(value, type) {
 }
 
 function renderMoveInput(value) {
+  const parsed = parseMoveValue(value);
+  if (!parsed.direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+
+  const parts = [];
+  if (parsed.isOd) parts.push(renderAttackInput(odCommand));
+  parts.push(renderMotionInput(parsed.direction));
+  if (parsed.attack) parts.push(renderAttackInput(parsed.attack));
+
+  return parts.join('<span class="input-plus">+</span>');
+}
+
+function parseMoveValue(value) {
+  const isOd = value.startsWith(odCommand);
+  const commandValue = isOd ? value.slice(odCommand.length) : value;
   const direction = [...directionCommands]
     .sort((a, b) => b.length - a.length)
-    .find((command) => value.startsWith(command));
-  if (!direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
-  return `${renderMotionInput(direction)}<span class="input-plus">+</span>${renderAttackInput(value.slice(direction.length))}`;
+    .find((command) => commandValue.startsWith(command));
+
+  if (!direction) {
+    return {
+      isOd,
+      direction: "",
+      attack: ""
+    };
+  }
+
+  return {
+    isOd,
+    direction,
+    attack: commandValue.slice(direction.length)
+  };
 }
 
 function renderMotionInput(value) {
