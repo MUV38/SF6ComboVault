@@ -1,5 +1,6 @@
 const STORAGE_KEY = "sf6-combo-vault";
 const CHARACTER_NOTES_STORAGE_KEY = "sf6-character-notes";
+const SELECTED_CHARACTER_STORAGE_KEY = "sf6-selected-character";
 
 const characterNameMap = {
   "A.K.I.": "A.K.I.",
@@ -65,6 +66,7 @@ const attackCommands = new Set(commandGroups.attack.commands.filter((command) =>
 const state = {
   combos: [],
   characterNotes: {},
+  selectedCharacter: "",
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -79,12 +81,16 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const els = {
+  charactersPage: $("#characters"),
   createPage: $("#create"),
   libraryPage: $("#library"),
   notesPage: $("#notes"),
+  charactersPageLink: $("#charactersPageLink"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
   notesPageLink: $("#notesPageLink"),
+  characterGrid: $("#characterGrid"),
+  selectedCharacterPill: $("#selectedCharacterPill"),
   form: $("#comboForm"),
   characterNoteForm: $("#characterNoteForm"),
   editingId: $("#editingId"),
@@ -115,11 +121,16 @@ const els = {
   template: $("#comboCardTemplate")
 };
 
+const selectedCharacterLabels = Array.from(document.querySelectorAll(".current-character-label"));
+
 function init() {
   state.combos = loadCombos();
   state.characterNotes = loadCharacterNotes();
+  state.selectedCharacter = loadSelectedCharacter();
   hydrateSharedCombo(false);
   renderCharacterOptions();
+  renderCharacterGrid();
+  applySelectedCharacter(false);
   renderCommandTabs();
   renderCommandButtons();
   renderRecipe();
@@ -127,12 +138,17 @@ function init() {
   renderList();
   renderCharacterNote();
   bindEvents();
+  document.body.classList.add("app-ready");
   showCurrentPage();
 }
 
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
   window.addEventListener("popstate", showCurrentPage);
+  els.charactersPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("characters");
+  });
   els.createPageLink.addEventListener("click", (event) => {
     event.preventDefault();
     goToPage("create");
@@ -147,7 +163,8 @@ function bindEvents() {
   });
   els.form.addEventListener("submit", saveCombo);
   els.characterNoteForm.addEventListener("submit", saveCharacterNote);
-  els.noteCharacterInput.addEventListener("change", renderCharacterNote);
+  els.noteCharacterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
+  els.characterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
     renderFavoriteDraft();
@@ -169,6 +186,7 @@ function bindEvents() {
   });
   els.characterFilter.addEventListener("change", (event) => {
     state.filters.character = event.target.value;
+    if (event.target.value !== "all") selectCharacter(event.target.value, false);
     renderList();
   });
   els.favoriteFilter.addEventListener("click", () => {
@@ -184,29 +202,40 @@ function showCurrentPage() {
 }
 
 function renderPage(page) {
+  const isCharacters = page === "characters";
   const isLibrary = page === "library";
   const isNotes = page === "notes";
 
-  els.createPage.hidden = isLibrary || isNotes;
+  els.charactersPage.hidden = !isCharacters;
+  els.createPage.hidden = isCharacters || isLibrary || isNotes;
   els.libraryPage.hidden = !isLibrary;
   els.notesPage.hidden = !isNotes;
-  els.createPageLink.classList.toggle("active", !isLibrary && !isNotes);
+  els.charactersPageLink.classList.toggle("active", isCharacters);
+  els.createPageLink.classList.toggle("active", !isCharacters && !isLibrary && !isNotes);
   els.libraryPageLink.classList.toggle("active", isLibrary);
   els.notesPageLink.classList.toggle("active", isNotes);
-  setCurrentPageLink(els.createPageLink, !isLibrary && !isNotes);
+  setCurrentPageLink(els.charactersPageLink, isCharacters);
+  setCurrentPageLink(els.createPageLink, !isCharacters && !isLibrary && !isNotes);
   setCurrentPageLink(els.libraryPageLink, isLibrary);
   setCurrentPageLink(els.notesPageLink, isNotes);
-  document.title = isLibrary
+  document.title = isCharacters
+    ? "キャラ選択 | SF6 Combo Vault"
+    : isLibrary
     ? "保存済みコンボ | SF6 Combo Vault"
     : isNotes
       ? "キャラメモ | SF6 Combo Vault"
       : "コンボ作成 | SF6 Combo Vault";
 
+  if (isCharacters) {
+    renderCharacterGrid();
+  }
   if (isLibrary) {
+    applySelectedCharacter(false);
     renderFilters();
     renderList();
   }
   if (isNotes) {
+    applySelectedCharacter(false);
     renderCharacterNote();
   }
 
@@ -214,7 +243,7 @@ function renderPage(page) {
 }
 
 function goToPage(page) {
-  const hash = page === "library" ? "#library" : page === "notes" ? "#notes" : "#create";
+  const hash = page === "library" ? "#library" : page === "notes" ? "#notes" : page === "characters" ? "#characters" : "#create";
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
@@ -222,9 +251,10 @@ function goToPage(page) {
 }
 
 function getCurrentPage() {
+  if (location.hash === "#characters") return "characters";
   if (location.hash === "#library") return "library";
   if (location.hash === "#notes") return "notes";
-  return "create";
+  return state.selectedCharacter ? "create" : "characters";
 }
 
 function setCurrentPageLink(link, isCurrent) {
@@ -261,11 +291,67 @@ function persistCharacterNotes() {
   localStorage.setItem(CHARACTER_NOTES_STORAGE_KEY, JSON.stringify(state.characterNotes));
 }
 
+function loadSelectedCharacter() {
+  const character = localStorage.getItem(SELECTED_CHARACTER_STORAGE_KEY);
+  return characters.includes(character) ? character : "";
+}
+
+function persistSelectedCharacter() {
+  if (state.selectedCharacter) {
+    localStorage.setItem(SELECTED_CHARACTER_STORAGE_KEY, state.selectedCharacter);
+  }
+}
+
 function renderCharacterOptions() {
   const options = characters.map((character) => `<option value="${escapeHtml(character)}">${escapeHtml(character)}</option>`).join("");
   els.characterInput.innerHTML = options;
   els.characterFilter.innerHTML = `<option value="all">全キャラ</option>${options}`;
   els.noteCharacterInput.innerHTML = options;
+}
+
+function renderCharacterGrid() {
+  els.characterGrid.innerHTML = characters.map((character) => `
+    <button class="character-choice ${character === state.selectedCharacter ? "active" : ""}" type="button" data-character="${escapeHtml(character)}">
+      ${escapeHtml(character)}
+    </button>
+  `).join("");
+
+  els.characterGrid.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => selectCharacter(button.dataset.character, true));
+  });
+  renderSelectedCharacterLabels();
+}
+
+function selectCharacter(character, navigateToCreate = true) {
+  state.selectedCharacter = character;
+  persistSelectedCharacter();
+  applySelectedCharacter();
+  renderCharacterGrid();
+  if (navigateToCreate) goToPage("create");
+}
+
+function applySelectedCharacter(renderAfterApply = true) {
+  const character = state.selectedCharacter || characters[0];
+
+  els.characterInput.value = character;
+  els.characterFilter.value = state.selectedCharacter || "all";
+  els.noteCharacterInput.value = character;
+  state.filters.character = state.selectedCharacter || "all";
+  renderSelectedCharacterLabels();
+
+  if (renderAfterApply) {
+    renderFilters();
+    renderList();
+    renderCharacterNote();
+  }
+}
+
+function renderSelectedCharacterLabels() {
+  const label = state.selectedCharacter || "未選択";
+  els.selectedCharacterPill.textContent = label;
+  selectedCharacterLabels.forEach((element) => {
+    element.textContent = label;
+  });
 }
 
 function renderCommandTabs() {
@@ -412,6 +498,7 @@ function saveCombo(event) {
 
   const editingId = els.editingId.value;
   const now = Date.now();
+  if (!state.selectedCharacter) selectCharacter(els.characterInput.value, false);
   const combo = {
     id: editingId || crypto.randomUUID(),
     character: els.characterInput.value,

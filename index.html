@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-4" />
+    <link rel="stylesheet" href="styles.css?v=20260506-5" />
   </head>
   <body>
     <div class="app-shell">
@@ -14,12 +14,13 @@
           <h1>Combo Vault</h1>
         </div>
         <nav class="page-nav" aria-label="ページ切り替え">
+          <a class="nav-link" id="charactersPageLink" href="#characters">
+            <span>キャラ選択</span>
+          </a>
           <a class="nav-link" id="createPageLink" href="#create">
-            <span class="nav-icon" aria-hidden="true">作</span>
             <span>コンボ作成</span>
           </a>
           <a class="nav-link" id="libraryPageLink" href="#library">
-            <span class="nav-icon" aria-hidden="true">庫</span>
             <span>保存済み</span>
           </a>
           <a class="nav-link" id="notesPageLink" href="#notes">
@@ -29,6 +30,20 @@
       </header>
 
       <main class="workspace single-page">
+        <section class="page-view character-picker" id="characters" aria-labelledby="characters-title">
+          <div class="panel-heading compact-heading">
+            <div>
+              <p class="eyebrow">Choose Fighter</p>
+              <h2 id="characters-title">キャラ選択</h2>
+            </div>
+            <span class="selected-character-pill" id="selectedCharacterPill">未選択</span>
+          </div>
+
+          <div class="character-picker-body">
+            <div class="character-grid" id="characterGrid"></div>
+          </div>
+        </section>
+
         <section class="page-view composer" id="create" aria-labelledby="composer-title">
           <div class="panel-heading compact-heading">
             <div>
@@ -36,6 +51,7 @@
               <h2 id="composer-title">コンボ作成</h2>
             </div>
             <div class="heading-actions">
+              <span class="selected-character-pill current-character-label">未選択</span>
               <button class="icon-button" id="importSharedButton" type="button" title="共有URLから読み込み" aria-label="共有URLから読み込み">
                 <span aria-hidden="true">↓</span>
               </button>
@@ -99,7 +115,10 @@
               <p class="eyebrow">Library</p>
               <h2 id="library-title">保存済みコンボ</h2>
             </div>
-            <span class="count-pill" id="comboCount">0</span>
+            <div class="heading-actions">
+              <span class="selected-character-pill current-character-label">未選択</span>
+              <span class="count-pill" id="comboCount">0</span>
+            </div>
           </div>
 
           <div class="filters">
@@ -123,6 +142,7 @@
               <p class="eyebrow">Character Notes</p>
               <h2 id="notes-title">キャラメモ</h2>
             </div>
+            <span class="selected-character-pill current-character-label">未選択</span>
           </div>
 
           <form id="characterNoteForm" class="notes-form">
@@ -179,6 +199,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260506-4"></script>
+    <script src="app.js?v=20260506-5"></script>
   </body>
 </html>
