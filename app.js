@@ -82,6 +82,15 @@ const commandDisplayMap = {
   "j.": "J"
 };
 
+const attackDisplayMap = {
+  LP: "弱P",
+  MP: "中P",
+  HP: "強P",
+  LK: "弱K",
+  MK: "中K",
+  HK: "強K"
+};
+
 const state = {
   combos: [],
   characterNotes: {},
@@ -397,7 +406,7 @@ function renderCommandTabs() {
 function renderCommandButtons() {
   const group = commandGroups[state.activeCommandGroup];
   els.commandButtons.innerHTML = group.commands
-    .map((command) => `<button class="command-button" type="button" data-command="${escapeHtml(command)}">${escapeHtml(formatCommandValue(command))}</button>`)
+    .map((command) => `<button class="command-button command-${state.activeCommandGroup}" type="button" data-command="${escapeHtml(command)}">${renderCommandInput(command, state.activeCommandGroup)}</button>`)
     .join("");
 
   els.commandButtons.querySelectorAll("button").forEach((button) => {
@@ -862,25 +871,40 @@ function canMergeAsMove(current, next) {
 
 function renderToken(step) {
   const type = ["motion", "attack", "system", "move"].includes(step.type) ? step.type : "system";
-  return `<span class="token ${type}">${escapeHtml(formatStepValue(step))}</span>`;
+  return `<span class="token ${type}">${renderCommandInput(step.value, type)}</span>`;
 }
 
-function formatStepValue(step) {
-  if (step.type === "motion") return formatCommandValue(step.value);
-  if (step.type === "move") return formatMoveValue(step.value);
-  return step.value;
+function renderCommandInput(value, type) {
+  if (type === "motion") return renderMotionInput(value);
+  if (type === "attack") return renderAttackInput(value);
+  if (type === "move") return renderMoveInput(value);
+  return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
 }
 
-function formatMoveValue(value) {
+function renderMoveInput(value) {
   const direction = [...directionCommands]
     .sort((a, b) => b.length - a.length)
     .find((command) => value.startsWith(command));
-  if (!direction) return value;
-  return `${formatCommandValue(direction)}${value.slice(direction.length)}`;
+  if (!direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+  return `${renderMotionInput(direction)}<span class="input-plus">+</span>${renderAttackInput(value.slice(direction.length))}`;
+}
+
+function renderMotionInput(value) {
+  return [...formatCommandValue(value)]
+    .map((direction) => `<span class="input-key input-dir">${escapeHtml(direction)}</span>`)
+    .join("");
+}
+
+function renderAttackInput(value) {
+  return `<span class="input-key input-attack">${escapeHtml(formatAttackValue(value))}</span>`;
 }
 
 function formatCommandValue(value) {
   return commandDisplayMap[value] || value;
+}
+
+function formatAttackValue(value) {
+  return attackDisplayMap[value] || value;
 }
 
 function escapeHtml(value) {

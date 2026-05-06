@@ -409,20 +409,19 @@ button:focus-visible {
 }
 
 .token {
+  gap: 4px;
   padding: 0 10px;
   letter-spacing: 0;
 }
 
 .token.motion {
-  color: #101113;
-  background: var(--cyan);
-  border-color: transparent;
+  background: rgba(68, 215, 199, 0.08);
+  border-color: rgba(68, 215, 199, 0.32);
 }
 
 .token.attack {
-  color: #101113;
-  background: var(--gold);
-  border-color: transparent;
+  background: rgba(255, 200, 87, 0.08);
+  border-color: rgba(255, 200, 87, 0.32);
 }
 
 .token.system {
@@ -432,10 +431,46 @@ button:focus-visible {
 }
 
 .token.move {
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(68, 215, 199, 0.32);
+  min-width: 0;
+}
+
+.input-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--text);
+  background: #0f1115;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.input-dir {
   color: #101113;
-  background: linear-gradient(90deg, var(--cyan), var(--gold));
+  background: var(--cyan);
   border-color: transparent;
-  min-width: 58px;
+}
+
+.input-attack {
+  color: #101113;
+  background: var(--gold);
+  border-color: transparent;
+}
+
+.input-text {
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
+.input-plus {
+  color: var(--muted);
+  font-weight: 900;
 }
 
 .recipe-actions {
@@ -567,6 +602,8 @@ button:focus-visible {
 .command-button {
   min-height: 50px;
   letter-spacing: 0;
+  gap: 4px;
+  padding: 6px;
 }
 
 .favorite-toggle.active,
