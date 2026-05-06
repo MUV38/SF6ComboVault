@@ -43,14 +43,17 @@ const characters = [
 const commandGroups = {
   motion: {
     label: "方向",
+    meta: "MOVE",
     commands: ["5", "2", "3", "6", "4", "8", "236", "214", "623", "421", "22", "66", "44", "j."]
   },
   attack: {
     label: "攻撃",
+    meta: "HIT",
     commands: ["LP", "MP", "HP", "LK", "MK", "HK", "P", "K", "投げ", "OD"]
   },
   system: {
     label: "システム",
+    meta: "TOOL",
     commands: ["DR", "Dラッシュ", "DI", "PC", "CH", "SA1", "SA2", "SA3", "CA", "→", "+", "微歩き"]
   }
 };
@@ -74,8 +77,8 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const els = {
-  createPage: $("#createPage"),
-  libraryPage: $("#libraryPage"),
+  createPage: $("#create"),
+  libraryPage: $("#library"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
   form: $("#comboForm"),
@@ -184,10 +187,10 @@ function renderPage(page) {
 
 function goToPage(page) {
   const hash = page === "library" ? "#library" : "#create";
-  renderPage(page);
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
+  renderPage(page);
 }
 
 function setCurrentPageLink(link, isCurrent) {
@@ -221,7 +224,8 @@ function renderCommandTabs() {
   els.commandTabs.innerHTML = Object.entries(commandGroups)
     .map(([key, group]) => `
       <button class="tab-button" type="button" data-group="${key}" aria-selected="${key === state.activeCommandGroup}">
-        ${group.label}
+        <span>${group.label}</span>
+        <small>${group.meta}</small>
       </button>
     `)
     .join("");
@@ -243,10 +247,24 @@ function renderCommandButtons() {
 
   els.commandButtons.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
-      state.recipe.push({ value: button.dataset.command, type: state.activeCommandGroup });
+      addRecipeStep({ value: button.dataset.command, type: state.activeCommandGroup });
       renderRecipe();
     });
   });
+}
+
+function addRecipeStep(step) {
+  const previous = state.recipe[state.recipe.length - 1];
+
+  if (canMergeAsMove(previous, step)) {
+    state.recipe[state.recipe.length - 1] = {
+      value: `${previous.value}${step.value}`,
+      type: "move"
+    };
+    return;
+  }
+
+  state.recipe.push(step);
 }
 
 function renderRecipe() {
