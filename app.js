@@ -1,7 +1,7 @@
 const STORAGE_KEY = "sf6-combo-vault";
 
 const characterNameMap = {
-  "A.K.I.": "エーケーアイ",
+  "A.K.I.": "A.K.I.",
   Akuma: "豪鬼",
   Blanka: "ブランカ",
   Cammy: "キャミィ",
@@ -14,7 +14,7 @@ const characterNameMap = {
   Elena: "エレナ",
   Guile: "ガイル",
   Jamie: "ジェイミー",
-  JP: "ジェイピー",
+  JP: "JP",
   Juri: "ジュリ",
   Ken: "ケン",
   Kimberly: "キンバリー",
@@ -31,9 +31,9 @@ const characterNameMap = {
 };
 
 const characters = [
-  "エーケーアイ", "エド", "エドモンド本田", "エレナ", "ガイル", "カスタム",
+  "A.K.I.", "エド", "エドモンド本田", "エレナ", "ガイル", "カスタム",
   "キャミィ", "キンバリー", "ケン", "豪鬼", "ザンギエフ", "ジェイミー",
-  "ジェイピー", "ジュリ", "春麗", "ダルシム", "ディージェイ", "テリー",
+  "JP", "ジュリ", "春麗", "ダルシム", "ディージェイ", "テリー",
   "不知火舞", "ブランカ", "ベガ", "マノン", "マリーザ", "ラシード",
   "リュウ", "リリー", "ルーク"
 ].sort((a, b) => a.localeCompare(b, "ja"));
