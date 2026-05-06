@@ -85,7 +85,7 @@ button:disabled {
 
 .page-nav {
   display: grid;
-  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  grid-template-columns: repeat(4, minmax(104px, 1fr));
   gap: 6px;
   min-width: min(420px, 100%);
   padding: 5px;
@@ -146,22 +146,6 @@ button:disabled {
   transform: translateY(1px);
 }
 
-.nav-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: inherit;
-  font-size: 13px;
-  font-weight: 950;
-}
-
-.nav-link.active .nav-icon {
-  background: rgba(16, 17, 19, 0.12);
-}
-
 h1,
 h2,
 h3,
@@ -209,15 +193,36 @@ h3 {
   display: block;
 }
 
-#library {
+#create,
+#library,
+#notes {
   display: none;
 }
 
-#library:target {
+#create:target,
+#library:target,
+#notes:target {
   display: block;
 }
 
-body:has(#library:target) #create {
+body:has(#library:target) #create,
+body:has(#notes:target) #create {
+  display: none;
+}
+
+#characters {
+  display: block;
+}
+
+body.app-ready #create,
+body.app-ready #library,
+body.app-ready #notes {
+  display: block;
+}
+
+body:has(#create:target) #characters,
+body:has(#library:target) #characters,
+body:has(#notes:target) #characters {
   display: none;
 }
 
@@ -226,7 +231,9 @@ body:has(#library:target) #create {
 }
 
 .composer,
-.library {
+.library,
+.character-picker,
+.notes {
   overflow: clip;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -253,8 +260,53 @@ body:has(#library:target) #create {
   gap: 8px;
 }
 
+.selected-character-pill {
+  display: inline-grid;
+  place-items: center;
+  min-height: 34px;
+  border: 1px solid rgba(68, 215, 199, 0.35);
+  border-radius: 999px;
+  color: var(--cyan);
+  background: rgba(68, 215, 199, 0.08);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.character-picker-body {
+  padding: clamp(14px, 2vw, 18px);
+}
+
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+}
+
+.character-choice {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #14171c;
+  font-weight: 850;
+}
+
+.character-choice:hover,
+.character-choice.active {
+  border-color: var(--cyan);
+  background: rgba(68, 215, 199, 0.12);
+}
+
+.character-choice.active {
+  color: #101113;
+  background: linear-gradient(135deg, var(--cyan), var(--gold));
+}
+
 .combo-form,
-.filters {
+.filters,
+.notes-form {
   display: grid;
   gap: 14px;
   padding: clamp(14px, 2vw, 18px);
@@ -629,6 +681,103 @@ button:focus-visible {
   flex-wrap: wrap;
 }
 
+.note-summary {
+  display: grid;
+  align-content: end;
+  min-height: 46px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.linked-combo-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #11141a;
+}
+
+.linked-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.linkable-combo-list,
+.linked-combo-list {
+  display: grid;
+  gap: 8px;
+}
+
+.linkable-combo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #14171c;
+}
+
+.linkable-combo input {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 3px;
+}
+
+.linkable-combo strong {
+  display: block;
+  color: var(--text);
+}
+
+.linkable-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.linkable-title a {
+  flex: 0 0 auto;
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.linkable-title a:hover {
+  text-decoration: underline;
+}
+
+.linkable-combo .card-recipe {
+  padding: 8px;
+}
+
+.linked-combo-link {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  background: #14171c;
+  text-decoration: none;
+}
+
+.linked-combo-link:hover {
+  border-color: var(--cyan);
+}
+
+.highlight-card {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.16);
+}
+
 .empty-state {
   padding: 28px;
   border: 1px dashed var(--line);
@@ -728,14 +877,17 @@ button:focus-visible {
   }
 
   .composer,
-  .library {
+  .library,
+  .character-picker,
+  .notes {
     border-radius: 8px;
   }
 
   .panel-heading,
   .combo-form,
   .filters,
-  .combo-list {
+  .combo-list,
+  .character-picker-body {
     padding-left: 12px;
     padding-right: 12px;
   }
@@ -795,7 +947,7 @@ button:focus-visible {
 
   .card-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   .card-actions button {

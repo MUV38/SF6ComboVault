@@ -1,4 +1,6 @@
 const STORAGE_KEY = "sf6-combo-vault";
+const CHARACTER_NOTES_STORAGE_KEY = "sf6-character-notes";
+const SELECTED_CHARACTER_STORAGE_KEY = "sf6-selected-character";
 
 const characterNameMap = {
   "A.K.I.": "A.K.I.",
@@ -63,6 +65,8 @@ const attackCommands = new Set(commandGroups.attack.commands.filter((command) =>
 
 const state = {
   combos: [],
+  characterNotes: {},
+  selectedCharacter: "",
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -77,11 +81,18 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const els = {
+  charactersPage: $("#characters"),
   createPage: $("#create"),
   libraryPage: $("#library"),
+  notesPage: $("#notes"),
+  charactersPageLink: $("#charactersPageLink"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
+  notesPageLink: $("#notesPageLink"),
+  characterGrid: $("#characterGrid"),
+  selectedCharacterPill: $("#selectedCharacterPill"),
   form: $("#comboForm"),
+  characterNoteForm: $("#characterNoteForm"),
   editingId: $("#editingId"),
   characterInput: $("#characterInput"),
   titleInput: $("#titleInput"),
@@ -98,6 +109,10 @@ const els = {
   importSharedButton: $("#importSharedButton"),
   searchInput: $("#searchInput"),
   characterFilter: $("#characterFilter"),
+  noteCharacterInput: $("#noteCharacterInput"),
+  characterNoteInput: $("#characterNoteInput"),
+  noteSummary: $("#noteSummary"),
+  linkableComboList: $("#linkableComboList"),
   favoriteFilter: $("#favoriteFilter"),
   tagFilter: $("#tagFilter"),
   comboList: $("#comboList"),
@@ -106,22 +121,34 @@ const els = {
   template: $("#comboCardTemplate")
 };
 
+const selectedCharacterLabels = Array.from(document.querySelectorAll(".current-character-label"));
+
 function init() {
   state.combos = loadCombos();
+  state.characterNotes = loadCharacterNotes();
+  state.selectedCharacter = loadSelectedCharacter();
   hydrateSharedCombo(false);
   renderCharacterOptions();
+  renderCharacterGrid();
+  applySelectedCharacter(false);
   renderCommandTabs();
   renderCommandButtons();
   renderRecipe();
   renderFilters();
   renderList();
+  renderCharacterNote();
   bindEvents();
+  document.body.classList.add("app-ready");
   showCurrentPage();
 }
 
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
   window.addEventListener("popstate", showCurrentPage);
+  els.charactersPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("characters");
+  });
   els.createPageLink.addEventListener("click", (event) => {
     event.preventDefault();
     goToPage("create");
@@ -130,7 +157,14 @@ function bindEvents() {
     event.preventDefault();
     goToPage("library");
   });
+  els.notesPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("notes");
+  });
   els.form.addEventListener("submit", saveCombo);
+  els.characterNoteForm.addEventListener("submit", saveCharacterNote);
+  els.noteCharacterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
+  els.characterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
     renderFavoriteDraft();
@@ -152,6 +186,7 @@ function bindEvents() {
   });
   els.characterFilter.addEventListener("change", (event) => {
     state.filters.character = event.target.value;
+    if (event.target.value !== "all") selectCharacter(event.target.value, false);
     renderList();
   });
   els.favoriteFilter.addEventListener("click", () => {
@@ -162,35 +197,64 @@ function bindEvents() {
 }
 
 function showCurrentPage() {
-  const page = location.hash === "#library" ? "library" : "create";
+  const page = getCurrentPage();
   renderPage(page);
 }
 
 function renderPage(page) {
+  const isCharacters = page === "characters";
   const isLibrary = page === "library";
+  const isNotes = page === "notes";
 
-  els.createPage.hidden = isLibrary;
+  els.charactersPage.hidden = !isCharacters;
+  els.createPage.hidden = isCharacters || isLibrary || isNotes;
   els.libraryPage.hidden = !isLibrary;
-  els.createPageLink.classList.toggle("active", !isLibrary);
+  els.notesPage.hidden = !isNotes;
+  els.charactersPageLink.classList.toggle("active", isCharacters);
+  els.createPageLink.classList.toggle("active", !isCharacters && !isLibrary && !isNotes);
   els.libraryPageLink.classList.toggle("active", isLibrary);
-  setCurrentPageLink(els.createPageLink, !isLibrary);
+  els.notesPageLink.classList.toggle("active", isNotes);
+  setCurrentPageLink(els.charactersPageLink, isCharacters);
+  setCurrentPageLink(els.createPageLink, !isCharacters && !isLibrary && !isNotes);
   setCurrentPageLink(els.libraryPageLink, isLibrary);
-  document.title = isLibrary ? "保存済みコンボ | SF6 Combo Vault" : "コンボ作成 | SF6 Combo Vault";
+  setCurrentPageLink(els.notesPageLink, isNotes);
+  document.title = isCharacters
+    ? "キャラ選択 | SF6 Combo Vault"
+    : isLibrary
+    ? "保存済みコンボ | SF6 Combo Vault"
+    : isNotes
+      ? "キャラメモ | SF6 Combo Vault"
+      : "コンボ作成 | SF6 Combo Vault";
 
+  if (isCharacters) {
+    renderCharacterGrid();
+  }
   if (isLibrary) {
+    applySelectedCharacter(false);
     renderFilters();
     renderList();
+  }
+  if (isNotes) {
+    applySelectedCharacter(false);
+    renderCharacterNote();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function goToPage(page) {
-  const hash = page === "library" ? "#library" : "#create";
+  const hash = page === "library" ? "#library" : page === "notes" ? "#notes" : page === "characters" ? "#characters" : "#create";
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
   renderPage(page);
+}
+
+function getCurrentPage() {
+  if (location.hash === "#characters") return "characters";
+  if (location.hash === "#library") return "library";
+  if (location.hash === "#notes") return "notes";
+  return state.selectedCharacter ? "create" : "characters";
 }
 
 function setCurrentPageLink(link, isCurrent) {
@@ -214,10 +278,80 @@ function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.combos));
 }
 
+function loadCharacterNotes() {
+  try {
+    const notes = JSON.parse(localStorage.getItem(CHARACTER_NOTES_STORAGE_KEY));
+    return notes && typeof notes === "object" ? notes : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistCharacterNotes() {
+  localStorage.setItem(CHARACTER_NOTES_STORAGE_KEY, JSON.stringify(state.characterNotes));
+}
+
+function loadSelectedCharacter() {
+  const character = localStorage.getItem(SELECTED_CHARACTER_STORAGE_KEY);
+  return characters.includes(character) ? character : "";
+}
+
+function persistSelectedCharacter() {
+  if (state.selectedCharacter) {
+    localStorage.setItem(SELECTED_CHARACTER_STORAGE_KEY, state.selectedCharacter);
+  }
+}
+
 function renderCharacterOptions() {
   const options = characters.map((character) => `<option value="${escapeHtml(character)}">${escapeHtml(character)}</option>`).join("");
   els.characterInput.innerHTML = options;
   els.characterFilter.innerHTML = `<option value="all">全キャラ</option>${options}`;
+  els.noteCharacterInput.innerHTML = options;
+}
+
+function renderCharacterGrid() {
+  els.characterGrid.innerHTML = characters.map((character) => `
+    <button class="character-choice ${character === state.selectedCharacter ? "active" : ""}" type="button" data-character="${escapeHtml(character)}">
+      ${escapeHtml(character)}
+    </button>
+  `).join("");
+
+  els.characterGrid.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => selectCharacter(button.dataset.character, true));
+  });
+  renderSelectedCharacterLabels();
+}
+
+function selectCharacter(character, navigateToCreate = true) {
+  state.selectedCharacter = character;
+  persistSelectedCharacter();
+  applySelectedCharacter();
+  renderCharacterGrid();
+  if (navigateToCreate) goToPage("create");
+}
+
+function applySelectedCharacter(renderAfterApply = true) {
+  const character = state.selectedCharacter || characters[0];
+
+  els.characterInput.value = character;
+  els.characterFilter.value = state.selectedCharacter || "all";
+  els.noteCharacterInput.value = character;
+  state.filters.character = state.selectedCharacter || "all";
+  renderSelectedCharacterLabels();
+
+  if (renderAfterApply) {
+    renderFilters();
+    renderList();
+    renderCharacterNote();
+  }
+}
+
+function renderSelectedCharacterLabels() {
+  const label = state.selectedCharacter || "未選択";
+  els.selectedCharacterPill.textContent = label;
+  selectedCharacterLabels.forEach((element) => {
+    element.textContent = label;
+  });
 }
 
 function renderCommandTabs() {
@@ -325,7 +459,12 @@ function renderList() {
     card.querySelector(".favorite-card").addEventListener("click", () => toggleFavorite(combo.id));
     card.querySelector(".edit-card").addEventListener("click", () => editCombo(combo.id));
     card.querySelector(".share-card").addEventListener("click", () => shareCombo(combo.id));
+    card.querySelector(".copy-link-card").addEventListener("click", () => copySavedComboLink(combo.id));
     card.querySelector(".delete-card").addEventListener("click", () => deleteCombo(combo.id));
+    if (new URLSearchParams(location.search).get("saved") === combo.id) {
+      card.classList.add("highlight-card");
+      requestAnimationFrame(() => card.scrollIntoView({ behavior: "smooth", block: "center" }));
+    }
     els.comboList.append(card);
   });
 }
@@ -359,6 +498,7 @@ function saveCombo(event) {
 
   const editingId = els.editingId.value;
   const now = Date.now();
+  if (!state.selectedCharacter) selectCharacter(els.characterInput.value, false);
   const combo = {
     id: editingId || crypto.randomUUID(),
     character: els.characterInput.value,
@@ -379,6 +519,7 @@ function saveCombo(event) {
   resetForm();
   renderFilters();
   renderList();
+  renderCharacterNote();
   showToast("コンボを保存しました");
   goToPage("library");
 }
@@ -420,9 +561,12 @@ function deleteCombo(id) {
   const combo = state.combos.find((item) => item.id === id);
   if (!combo || !confirm(`「${combo.title}」を削除しますか？`)) return;
   state.combos = state.combos.filter((item) => item.id !== id);
+  unlinkDeletedCombo(id);
   persist();
+  persistCharacterNotes();
   renderFilters();
   renderList();
+  renderCharacterNote();
   showToast("削除しました");
 }
 
@@ -441,6 +585,108 @@ async function shareCombo(id) {
   } catch {
     prompt("共有URL", shareUrl.toString());
   }
+}
+
+async function copySavedComboLink(id) {
+  const url = createSavedComboUrl(id);
+
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("コンボへのリンクをコピーしました");
+  } catch {
+    prompt("コンボへのリンク", url);
+  }
+}
+
+function renderCharacterNote() {
+  const character = els.noteCharacterInput.value || characters[0];
+  const note = getCharacterNote(character);
+  const characterCombos = state.combos.filter((combo) => combo.character === character);
+  const linkedCombos = characterCombos.filter((combo) => note.comboIds.includes(combo.id));
+
+  els.characterNoteInput.value = note.text;
+  els.noteSummary.textContent = `保存済み ${characterCombos.length}件 / リンク ${linkedCombos.length}件`;
+  renderLinkableCombos(character, note.comboIds);
+}
+
+function getCharacterNote(character) {
+  return {
+    text: state.characterNotes[character]?.text || "",
+    comboIds: Array.isArray(state.characterNotes[character]?.comboIds) ? state.characterNotes[character].comboIds : []
+  };
+}
+
+function saveCharacterNote(event) {
+  event.preventDefault();
+  const character = els.noteCharacterInput.value;
+  const current = getCharacterNote(character);
+  state.characterNotes[character] = {
+    text: els.characterNoteInput.value.trim(),
+    comboIds: current.comboIds
+  };
+  persistCharacterNotes();
+  renderCharacterNote();
+  showToast("キャラメモを保存しました");
+}
+
+function renderLinkableCombos(character, linkedComboIds) {
+  const combos = state.combos.filter((combo) => combo.character === character);
+
+  if (!combos.length) {
+    els.linkableComboList.innerHTML = `<div class="empty-state">このキャラの保存済みコンボがありません</div>`;
+    return;
+  }
+
+  els.linkableComboList.innerHTML = "";
+  combos.forEach((combo) => {
+    const comboUrl = createSavedComboUrl(combo.id);
+    const label = document.createElement("label");
+    label.className = "linkable-combo";
+    label.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(combo.id)}" ${linkedComboIds.includes(combo.id) ? "checked" : ""} />
+      <span>
+        <span class="linkable-title">
+          <strong>${escapeHtml(combo.title)}</strong>
+          <a href="${escapeHtml(comboUrl)}">開く</a>
+        </span>
+        <span class="card-recipe">${groupRecipeForDisplay(combo.recipe).map(renderToken).join("")}</span>
+      </span>
+    `;
+    label.querySelector("input").addEventListener("change", () => toggleLinkedCombo(character, combo.id));
+    label.querySelector("a").addEventListener("click", (event) => event.stopPropagation());
+    els.linkableComboList.append(label);
+  });
+}
+
+function createSavedComboUrl(id) {
+  const url = new URL(location.href);
+  url.searchParams.set("saved", id);
+  url.hash = "library";
+  return url.toString();
+}
+
+function toggleLinkedCombo(character, comboId) {
+  const note = getCharacterNote(character);
+  const comboIds = note.comboIds.includes(comboId)
+    ? note.comboIds.filter((id) => id !== comboId)
+    : [...note.comboIds, comboId];
+
+  state.characterNotes[character] = {
+    text: els.characterNoteInput.value.trim(),
+    comboIds
+  };
+  persistCharacterNotes();
+  renderCharacterNote();
+}
+
+function unlinkDeletedCombo(comboId) {
+  Object.entries(state.characterNotes).forEach(([character, note]) => {
+    if (!Array.isArray(note.comboIds)) return;
+    state.characterNotes[character] = {
+      ...note,
+      comboIds: note.comboIds.filter((id) => id !== comboId)
+    };
+  });
 }
 
 function hydrateSharedCombo(notifyWhenMissing = true) {
