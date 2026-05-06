@@ -394,7 +394,11 @@ button:focus-visible {
 .command-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(15, 17, 21, 0.72);
 }
 
 .tab-button,
@@ -413,6 +417,43 @@ button:focus-visible {
   font-weight: 850;
 }
 
+.tab-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  min-height: 54px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  overflow: hidden;
+}
+
+.tab-button::before {
+  position: absolute;
+  inset: auto 14px 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  content: "";
+}
+
+.tab-button span {
+  position: relative;
+  z-index: 1;
+  line-height: 1.1;
+}
+
+.tab-button small {
+  position: relative;
+  z-index: 1;
+  color: currentColor;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  opacity: 0.62;
+}
+
 .icon-button {
   display: inline-grid;
   place-items: center;
@@ -423,12 +464,23 @@ button:focus-visible {
   flex: 0 0 auto;
 }
 
-.tab-button[aria-selected="true"],
 .toggle-button[aria-pressed="true"],
 .primary-button {
   color: #151515;
   background: var(--red);
   border-color: transparent;
+}
+
+.tab-button[aria-selected="true"] {
+  color: var(--text);
+  border-color: rgba(68, 215, 199, 0.28);
+  background:
+    linear-gradient(180deg, rgba(68, 215, 199, 0.14), rgba(255, 200, 87, 0.08)),
+    rgba(32, 35, 42, 0.86);
+}
+
+.tab-button[aria-selected="true"]::before {
+  background: linear-gradient(90deg, var(--cyan), var(--gold));
 }
 
 .primary-button {
@@ -706,8 +758,7 @@ button:focus-visible {
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 4px 0;
-    background: var(--surface);
+    background: rgba(15, 17, 21, 0.96);
   }
 
   .command-buttons {

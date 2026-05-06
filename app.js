@@ -43,14 +43,17 @@ const characters = [
 const commandGroups = {
   motion: {
     label: "方向",
+    meta: "MOVE",
     commands: ["5", "2", "3", "6", "4", "8", "236", "214", "623", "421", "22", "66", "44", "j."]
   },
   attack: {
     label: "攻撃",
+    meta: "HIT",
     commands: ["LP", "MP", "HP", "LK", "MK", "HK", "P", "K", "投げ", "OD"]
   },
   system: {
     label: "システム",
+    meta: "TOOL",
     commands: ["DR", "Dラッシュ", "DI", "PC", "CH", "SA1", "SA2", "SA3", "CA", "→", "+", "微歩き"]
   }
 };
@@ -221,7 +224,8 @@ function renderCommandTabs() {
   els.commandTabs.innerHTML = Object.entries(commandGroups)
     .map(([key, group]) => `
       <button class="tab-button" type="button" data-group="${key}" aria-selected="${key === state.activeCommandGroup}">
-        ${group.label}
+        <span>${group.label}</span>
+        <small>${group.meta}</small>
       </button>
     `)
     .join("");
