@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SF6 Combo Vault</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Street Fighter 6</p>
+          <h1>Combo Vault</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="importSharedButton" type="button" title="共有URLから読み込み" aria-label="共有URLから読み込み">
+            <span aria-hidden="true">↓</span>
+          </button>
+          <button class="text-button" id="newComboButton" type="button">新規作成</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="composer" aria-labelledby="composer-title">
+          <div class="panel-heading compact-heading">
+            <div>
+              <p class="eyebrow">Recipe Builder</p>
+              <h2 id="composer-title">コンボ作成</h2>
+            </div>
+            <button class="icon-button favorite-toggle" id="favoriteInput" type="button" title="お気に入り" aria-label="お気に入り">
+              <span aria-hidden="true">☆</span>
+            </button>
+          </div>
+
+          <form id="comboForm" class="combo-form">
+            <input id="editingId" type="hidden" />
+
+            <div class="field-grid">
+              <label>
+                <span>キャラ</span>
+                <select id="characterInput" required></select>
+              </label>
+              <label>
+                <span>タイトル</span>
+                <input id="titleInput" type="text" placeholder="例: 中央 2MP始動" required />
+              </label>
+            </div>
+
+            <label>
+              <span>タグ</span>
+              <input id="tagsInput" type="text" placeholder="中央, ノーゲージ, SA3" />
+            </label>
+
+            <label>
+              <span>メモ</span>
+              <textarea id="notesInput" rows="3" placeholder="ダメージ、起き攻め、注意点など"></textarea>
+            </label>
+
+            <div class="recipe-strip" aria-live="polite">
+              <div>
+                <span class="strip-label">Recipe</span>
+                <div id="recipePreview" class="recipe-preview empty">コマンドを選択</div>
+              </div>
+              <div class="recipe-actions">
+                <button class="icon-button" id="undoStepButton" type="button" title="1つ戻す" aria-label="1つ戻す">↶</button>
+                <button class="icon-button" id="clearRecipeButton" type="button" title="レシピを消す" aria-label="レシピを消す">×</button>
+              </div>
+            </div>
+
+            <div class="command-bank">
+              <div class="command-tabs" id="commandTabs"></div>
+              <div class="command-buttons" id="commandButtons"></div>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">保存</button>
+              <button class="ghost-button" id="cancelEditButton" type="button">編集解除</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="library" aria-labelledby="library-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Library</p>
+              <h2 id="library-title">保存済みコンボ</h2>
+            </div>
+            <span class="count-pill" id="comboCount">0</span>
+          </div>
+
+          <div class="filters">
+            <label class="search-field">
+              <span>検索</span>
+              <input id="searchInput" type="search" placeholder="キャラ・タグ・コマンドで検索" />
+            </label>
+            <div class="filter-row">
+              <select id="characterFilter"></select>
+              <button class="toggle-button" id="favoriteFilter" type="button" aria-pressed="false">★のみ</button>
+            </div>
+            <div class="tag-filter" id="tagFilter"></div>
+          </div>
+
+          <div class="combo-list" id="comboList"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="comboCardTemplate">
+      <article class="combo-card">
+        <div class="card-top">
+          <div class="card-title-block">
+            <p class="character"></p>
+            <h3></h3>
+          </div>
+          <button class="icon-button favorite-card" type="button" title="お気に入り切替" aria-label="お気に入り切替"></button>
+        </div>
+        <div class="card-recipe"></div>
+        <div class="card-tags"></div>
+        <p class="card-notes"></p>
+        <div class="card-actions">
+          <button class="ghost-button edit-card" type="button">編集</button>
+          <button class="ghost-button share-card" type="button">共有</button>
+          <button class="danger-button delete-card" type="button">削除</button>
+        </div>
+      </article>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
