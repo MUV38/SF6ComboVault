@@ -85,7 +85,7 @@ button:disabled {
 
 .page-nav {
   display: grid;
-  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  grid-template-columns: repeat(3, minmax(112px, 1fr));
   gap: 6px;
   min-width: min(420px, 100%);
   padding: 5px;
@@ -209,15 +209,18 @@ h3 {
   display: block;
 }
 
-#library {
+#library,
+#notes {
   display: none;
 }
 
-#library:target {
+#library:target,
+#notes:target {
   display: block;
 }
 
-body:has(#library:target) #create {
+body:has(#library:target) #create,
+body:has(#notes:target) #create {
   display: none;
 }
 
@@ -254,7 +257,8 @@ body:has(#library:target) #create {
 }
 
 .combo-form,
-.filters {
+.filters,
+.notes-form {
   display: grid;
   gap: 14px;
   padding: clamp(14px, 2vw, 18px);
@@ -629,6 +633,103 @@ button:focus-visible {
   flex-wrap: wrap;
 }
 
+.note-summary {
+  display: grid;
+  align-content: end;
+  min-height: 46px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.linked-combo-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #11141a;
+}
+
+.linked-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.linkable-combo-list,
+.linked-combo-list {
+  display: grid;
+  gap: 8px;
+}
+
+.linkable-combo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #14171c;
+}
+
+.linkable-combo input {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 3px;
+}
+
+.linkable-combo strong {
+  display: block;
+  color: var(--text);
+}
+
+.linkable-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.linkable-title a {
+  flex: 0 0 auto;
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.linkable-title a:hover {
+  text-decoration: underline;
+}
+
+.linkable-combo .card-recipe {
+  padding: 8px;
+}
+
+.linked-combo-link {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  background: #14171c;
+  text-decoration: none;
+}
+
+.linked-combo-link:hover {
+  border-color: var(--cyan);
+}
+
+.highlight-card {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(255, 200, 87, 0.16);
+}
+
 .empty-state {
   padding: 28px;
   border: 1px dashed var(--line);
@@ -705,7 +806,7 @@ button:focus-visible {
   }
 
   .page-nav {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   h1 {
@@ -795,7 +896,7 @@ button:focus-visible {
 
   .card-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   .card-actions button {

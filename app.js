@@ -1,4 +1,5 @@
 const STORAGE_KEY = "sf6-combo-vault";
+const CHARACTER_NOTES_STORAGE_KEY = "sf6-character-notes";
 
 const characterNameMap = {
   "A.K.I.": "A.K.I.",
@@ -63,6 +64,7 @@ const attackCommands = new Set(commandGroups.attack.commands.filter((command) =>
 
 const state = {
   combos: [],
+  characterNotes: {},
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -79,9 +81,12 @@ const $ = (selector) => document.querySelector(selector);
 const els = {
   createPage: $("#create"),
   libraryPage: $("#library"),
+  notesPage: $("#notes"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
+  notesPageLink: $("#notesPageLink"),
   form: $("#comboForm"),
+  characterNoteForm: $("#characterNoteForm"),
   editingId: $("#editingId"),
   characterInput: $("#characterInput"),
   titleInput: $("#titleInput"),
@@ -98,6 +103,10 @@ const els = {
   importSharedButton: $("#importSharedButton"),
   searchInput: $("#searchInput"),
   characterFilter: $("#characterFilter"),
+  noteCharacterInput: $("#noteCharacterInput"),
+  characterNoteInput: $("#characterNoteInput"),
+  noteSummary: $("#noteSummary"),
+  linkableComboList: $("#linkableComboList"),
   favoriteFilter: $("#favoriteFilter"),
   tagFilter: $("#tagFilter"),
   comboList: $("#comboList"),
@@ -108,6 +117,7 @@ const els = {
 
 function init() {
   state.combos = loadCombos();
+  state.characterNotes = loadCharacterNotes();
   hydrateSharedCombo(false);
   renderCharacterOptions();
   renderCommandTabs();
@@ -115,6 +125,7 @@ function init() {
   renderRecipe();
   renderFilters();
   renderList();
+  renderCharacterNote();
   bindEvents();
   showCurrentPage();
 }
@@ -130,7 +141,13 @@ function bindEvents() {
     event.preventDefault();
     goToPage("library");
   });
+  els.notesPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("notes");
+  });
   els.form.addEventListener("submit", saveCombo);
+  els.characterNoteForm.addEventListener("submit", saveCharacterNote);
+  els.noteCharacterInput.addEventListener("change", renderCharacterNote);
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
     renderFavoriteDraft();
@@ -162,35 +179,52 @@ function bindEvents() {
 }
 
 function showCurrentPage() {
-  const page = location.hash === "#library" ? "library" : "create";
+  const page = getCurrentPage();
   renderPage(page);
 }
 
 function renderPage(page) {
   const isLibrary = page === "library";
+  const isNotes = page === "notes";
 
-  els.createPage.hidden = isLibrary;
+  els.createPage.hidden = isLibrary || isNotes;
   els.libraryPage.hidden = !isLibrary;
-  els.createPageLink.classList.toggle("active", !isLibrary);
+  els.notesPage.hidden = !isNotes;
+  els.createPageLink.classList.toggle("active", !isLibrary && !isNotes);
   els.libraryPageLink.classList.toggle("active", isLibrary);
-  setCurrentPageLink(els.createPageLink, !isLibrary);
+  els.notesPageLink.classList.toggle("active", isNotes);
+  setCurrentPageLink(els.createPageLink, !isLibrary && !isNotes);
   setCurrentPageLink(els.libraryPageLink, isLibrary);
-  document.title = isLibrary ? "保存済みコンボ | SF6 Combo Vault" : "コンボ作成 | SF6 Combo Vault";
+  setCurrentPageLink(els.notesPageLink, isNotes);
+  document.title = isLibrary
+    ? "保存済みコンボ | SF6 Combo Vault"
+    : isNotes
+      ? "キャラメモ | SF6 Combo Vault"
+      : "コンボ作成 | SF6 Combo Vault";
 
   if (isLibrary) {
     renderFilters();
     renderList();
+  }
+  if (isNotes) {
+    renderCharacterNote();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function goToPage(page) {
-  const hash = page === "library" ? "#library" : "#create";
+  const hash = page === "library" ? "#library" : page === "notes" ? "#notes" : "#create";
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
   renderPage(page);
+}
+
+function getCurrentPage() {
+  if (location.hash === "#library") return "library";
+  if (location.hash === "#notes") return "notes";
+  return "create";
 }
 
 function setCurrentPageLink(link, isCurrent) {
@@ -214,10 +248,24 @@ function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.combos));
 }
 
+function loadCharacterNotes() {
+  try {
+    const notes = JSON.parse(localStorage.getItem(CHARACTER_NOTES_STORAGE_KEY));
+    return notes && typeof notes === "object" ? notes : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistCharacterNotes() {
+  localStorage.setItem(CHARACTER_NOTES_STORAGE_KEY, JSON.stringify(state.characterNotes));
+}
+
 function renderCharacterOptions() {
   const options = characters.map((character) => `<option value="${escapeHtml(character)}">${escapeHtml(character)}</option>`).join("");
   els.characterInput.innerHTML = options;
   els.characterFilter.innerHTML = `<option value="all">全キャラ</option>${options}`;
+  els.noteCharacterInput.innerHTML = options;
 }
 
 function renderCommandTabs() {
@@ -325,7 +373,12 @@ function renderList() {
     card.querySelector(".favorite-card").addEventListener("click", () => toggleFavorite(combo.id));
     card.querySelector(".edit-card").addEventListener("click", () => editCombo(combo.id));
     card.querySelector(".share-card").addEventListener("click", () => shareCombo(combo.id));
+    card.querySelector(".copy-link-card").addEventListener("click", () => copySavedComboLink(combo.id));
     card.querySelector(".delete-card").addEventListener("click", () => deleteCombo(combo.id));
+    if (new URLSearchParams(location.search).get("saved") === combo.id) {
+      card.classList.add("highlight-card");
+      requestAnimationFrame(() => card.scrollIntoView({ behavior: "smooth", block: "center" }));
+    }
     els.comboList.append(card);
   });
 }
@@ -379,6 +432,7 @@ function saveCombo(event) {
   resetForm();
   renderFilters();
   renderList();
+  renderCharacterNote();
   showToast("コンボを保存しました");
   goToPage("library");
 }
@@ -420,9 +474,12 @@ function deleteCombo(id) {
   const combo = state.combos.find((item) => item.id === id);
   if (!combo || !confirm(`「${combo.title}」を削除しますか？`)) return;
   state.combos = state.combos.filter((item) => item.id !== id);
+  unlinkDeletedCombo(id);
   persist();
+  persistCharacterNotes();
   renderFilters();
   renderList();
+  renderCharacterNote();
   showToast("削除しました");
 }
 
@@ -441,6 +498,108 @@ async function shareCombo(id) {
   } catch {
     prompt("共有URL", shareUrl.toString());
   }
+}
+
+async function copySavedComboLink(id) {
+  const url = createSavedComboUrl(id);
+
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("コンボへのリンクをコピーしました");
+  } catch {
+    prompt("コンボへのリンク", url);
+  }
+}
+
+function renderCharacterNote() {
+  const character = els.noteCharacterInput.value || characters[0];
+  const note = getCharacterNote(character);
+  const characterCombos = state.combos.filter((combo) => combo.character === character);
+  const linkedCombos = characterCombos.filter((combo) => note.comboIds.includes(combo.id));
+
+  els.characterNoteInput.value = note.text;
+  els.noteSummary.textContent = `保存済み ${characterCombos.length}件 / リンク ${linkedCombos.length}件`;
+  renderLinkableCombos(character, note.comboIds);
+}
+
+function getCharacterNote(character) {
+  return {
+    text: state.characterNotes[character]?.text || "",
+    comboIds: Array.isArray(state.characterNotes[character]?.comboIds) ? state.characterNotes[character].comboIds : []
+  };
+}
+
+function saveCharacterNote(event) {
+  event.preventDefault();
+  const character = els.noteCharacterInput.value;
+  const current = getCharacterNote(character);
+  state.characterNotes[character] = {
+    text: els.characterNoteInput.value.trim(),
+    comboIds: current.comboIds
+  };
+  persistCharacterNotes();
+  renderCharacterNote();
+  showToast("キャラメモを保存しました");
+}
+
+function renderLinkableCombos(character, linkedComboIds) {
+  const combos = state.combos.filter((combo) => combo.character === character);
+
+  if (!combos.length) {
+    els.linkableComboList.innerHTML = `<div class="empty-state">このキャラの保存済みコンボがありません</div>`;
+    return;
+  }
+
+  els.linkableComboList.innerHTML = "";
+  combos.forEach((combo) => {
+    const comboUrl = createSavedComboUrl(combo.id);
+    const label = document.createElement("label");
+    label.className = "linkable-combo";
+    label.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(combo.id)}" ${linkedComboIds.includes(combo.id) ? "checked" : ""} />
+      <span>
+        <span class="linkable-title">
+          <strong>${escapeHtml(combo.title)}</strong>
+          <a href="${escapeHtml(comboUrl)}">開く</a>
+        </span>
+        <span class="card-recipe">${groupRecipeForDisplay(combo.recipe).map(renderToken).join("")}</span>
+      </span>
+    `;
+    label.querySelector("input").addEventListener("change", () => toggleLinkedCombo(character, combo.id));
+    label.querySelector("a").addEventListener("click", (event) => event.stopPropagation());
+    els.linkableComboList.append(label);
+  });
+}
+
+function createSavedComboUrl(id) {
+  const url = new URL(location.href);
+  url.searchParams.set("saved", id);
+  url.hash = "library";
+  return url.toString();
+}
+
+function toggleLinkedCombo(character, comboId) {
+  const note = getCharacterNote(character);
+  const comboIds = note.comboIds.includes(comboId)
+    ? note.comboIds.filter((id) => id !== comboId)
+    : [...note.comboIds, comboId];
+
+  state.characterNotes[character] = {
+    text: els.characterNoteInput.value.trim(),
+    comboIds
+  };
+  persistCharacterNotes();
+  renderCharacterNote();
+}
+
+function unlinkDeletedCombo(comboId) {
+  Object.entries(state.characterNotes).forEach(([character, note]) => {
+    if (!Array.isArray(note.comboIds)) return;
+    state.characterNotes[character] = {
+      ...note,
+      comboIds: note.comboIds.filter((id) => id !== comboId)
+    };
+  });
 }
 
 function hydrateSharedCombo(notifyWhenMissing = true) {

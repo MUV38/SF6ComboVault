@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-3" />
+    <link rel="stylesheet" href="styles.css?v=20260506-4" />
   </head>
   <body>
     <div class="app-shell">
@@ -21,6 +21,9 @@
           <a class="nav-link" id="libraryPageLink" href="#library">
             <span class="nav-icon" aria-hidden="true">庫</span>
             <span>保存済み</span>
+          </a>
+          <a class="nav-link" id="notesPageLink" href="#notes">
+            <span>キャラメモ</span>
           </a>
         </nav>
       </header>
@@ -113,6 +116,44 @@
 
           <div class="combo-list" id="comboList"></div>
         </section>
+
+        <section class="page-view notes" id="notes" aria-labelledby="notes-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Character Notes</p>
+              <h2 id="notes-title">キャラメモ</h2>
+            </div>
+          </div>
+
+          <form id="characterNoteForm" class="notes-form">
+            <div class="field-grid">
+              <label>
+                <span>キャラ</span>
+                <select id="noteCharacterInput"></select>
+              </label>
+              <div class="note-summary" id="noteSummary"></div>
+            </div>
+
+            <label>
+              <span>メモ</span>
+              <textarea id="characterNoteInput" rows="7" placeholder="対策、よく使う始動、セットプレイ、苦手ポイントなど"></textarea>
+            </label>
+
+            <div class="linked-combo-panel">
+              <div class="linked-heading">
+                <div>
+                  <p class="eyebrow">Linked Combos</p>
+                  <h3>リンクする保存済みコンボ</h3>
+                </div>
+              </div>
+              <div class="linkable-combo-list" id="linkableComboList"></div>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">メモ保存</button>
+            </div>
+          </form>
+        </section>
       </main>
     </div>
 
@@ -131,12 +172,13 @@
         <div class="card-actions">
           <button class="ghost-button edit-card" type="button">編集</button>
           <button class="ghost-button share-card" type="button">共有</button>
+          <button class="ghost-button copy-link-card" type="button">リンク</button>
           <button class="danger-button delete-card" type="button">削除</button>
         </div>
       </article>
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260506-3"></script>
+    <script src="app.js?v=20260506-4"></script>
   </body>
 </html>
