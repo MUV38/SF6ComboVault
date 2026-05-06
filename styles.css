@@ -205,8 +205,24 @@ h3 {
   justify-content: center;
 }
 
-.page-view[hidden] {
+.page-view {
+  display: block;
+}
+
+#library {
   display: none;
+}
+
+#library:target {
+  display: block;
+}
+
+body:has(#library:target) #create {
+  display: none;
+}
+
+.page-view[hidden] {
+  display: none !important;
 }
 
 .composer,

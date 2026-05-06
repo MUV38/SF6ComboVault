@@ -74,8 +74,8 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const els = {
-  createPage: $("#createPage"),
-  libraryPage: $("#libraryPage"),
+  createPage: $("#create"),
+  libraryPage: $("#library"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
   form: $("#comboForm"),
@@ -184,10 +184,10 @@ function renderPage(page) {
 
 function goToPage(page) {
   const hash = page === "library" ? "#library" : "#create";
-  renderPage(page);
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
+  renderPage(page);
 }
 
 function setCurrentPageLink(link, isCurrent) {
@@ -243,10 +243,24 @@ function renderCommandButtons() {
 
   els.commandButtons.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
-      state.recipe.push({ value: button.dataset.command, type: state.activeCommandGroup });
+      addRecipeStep({ value: button.dataset.command, type: state.activeCommandGroup });
       renderRecipe();
     });
   });
+}
+
+function addRecipeStep(step) {
+  const previous = state.recipe[state.recipe.length - 1];
+
+  if (canMergeAsMove(previous, step)) {
+    state.recipe[state.recipe.length - 1] = {
+      value: `${previous.value}${step.value}`,
+      type: "move"
+    };
+    return;
+  }
+
+  state.recipe.push(step);
 }
 
 function renderRecipe() {
