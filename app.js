@@ -55,6 +55,9 @@ const commandGroups = {
   }
 };
 
+const directionCommands = new Set(commandGroups.motion.commands);
+const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
+
 const state = {
   combos: [],
   recipe: [],
@@ -115,6 +118,15 @@ function init() {
 
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
+  window.addEventListener("popstate", showCurrentPage);
+  els.createPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("create");
+  });
+  els.libraryPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("library");
+  });
   els.form.addEventListener("submit", saveCombo);
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
@@ -148,14 +160,18 @@ function bindEvents() {
 
 function showCurrentPage() {
   const page = location.hash === "#library" ? "library" : "create";
+  renderPage(page);
+}
+
+function renderPage(page) {
   const isLibrary = page === "library";
 
   els.createPage.hidden = isLibrary;
   els.libraryPage.hidden = !isLibrary;
   els.createPageLink.classList.toggle("active", !isLibrary);
   els.libraryPageLink.classList.toggle("active", isLibrary);
-  els.createPageLink.setAttribute("aria-current", !isLibrary ? "page" : "false");
-  els.libraryPageLink.setAttribute("aria-current", isLibrary ? "page" : "false");
+  setCurrentPageLink(els.createPageLink, !isLibrary);
+  setCurrentPageLink(els.libraryPageLink, isLibrary);
   document.title = isLibrary ? "保存済みコンボ | SF6 Combo Vault" : "コンボ作成 | SF6 Combo Vault";
 
   if (isLibrary) {
@@ -168,11 +184,18 @@ function showCurrentPage() {
 
 function goToPage(page) {
   const hash = page === "library" ? "#library" : "#create";
-  if (location.hash === hash) {
-    showCurrentPage();
-    return;
+  renderPage(page);
+  if (location.hash !== hash) {
+    history.pushState(null, "", hash);
   }
-  location.hash = hash;
+}
+
+function setCurrentPageLink(link, isCurrent) {
+  if (isCurrent) {
+    link.setAttribute("aria-current", "page");
+  } else {
+    link.removeAttribute("aria-current");
+  }
 }
 
 function loadCombos() {
@@ -234,7 +257,7 @@ function renderRecipe() {
   }
 
   els.recipePreview.className = "recipe-preview";
-  els.recipePreview.innerHTML = state.recipe.map(renderToken).join("");
+  els.recipePreview.innerHTML = groupRecipeForDisplay(state.recipe).map(renderToken).join("");
 }
 
 function renderFavoriteDraft() {
@@ -274,7 +297,7 @@ function renderList() {
     card.querySelector("h3").textContent = combo.title;
     card.querySelector(".favorite-card").textContent = combo.favorite ? "★" : "☆";
     card.querySelector(".favorite-card").classList.toggle("active", combo.favorite);
-    card.querySelector(".card-recipe").innerHTML = combo.recipe.map(renderToken).join("");
+    card.querySelector(".card-recipe").innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
     card.querySelector(".card-tags").innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
 
     const notes = card.querySelector(".card-notes");
@@ -463,8 +486,38 @@ function parseTags(value) {
   return [...new Set(value.split(/[,\s、]+/).map((tag) => tag.trim()).filter(Boolean))];
 }
 
+function groupRecipeForDisplay(recipe) {
+  const grouped = [];
+
+  for (let index = 0; index < recipe.length; index += 1) {
+    const current = recipe[index];
+    const next = recipe[index + 1];
+
+    if (canMergeAsMove(current, next)) {
+      grouped.push({
+        value: `${current.value}${next.value}`,
+        type: "move"
+      });
+      index += 1;
+    } else {
+      grouped.push(current);
+    }
+  }
+
+  return grouped;
+}
+
+function canMergeAsMove(current, next) {
+  return current
+    && next
+    && current.type === "motion"
+    && next.type === "attack"
+    && directionCommands.has(current.value)
+    && attackCommands.has(next.value);
+}
+
 function renderToken(step) {
-  const type = ["motion", "attack", "system"].includes(step.type) ? step.type : "system";
+  const type = ["motion", "attack", "system", "move"].includes(step.type) ? step.type : "system";
   return `<span class="token ${type}">${escapeHtml(step.value)}</span>`;
 }
 

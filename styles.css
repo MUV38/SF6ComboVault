@@ -86,30 +86,80 @@ button:disabled {
 .page-nav {
   display: grid;
   grid-template-columns: repeat(2, minmax(118px, 1fr));
-  gap: 8px;
-  padding: 6px;
+  gap: 6px;
+  min-width: min(420px, 100%);
+  padding: 5px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(15, 17, 21, 0.72);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    rgba(15, 17, 21, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .nav-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  gap: 8px;
+  min-height: 44px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 999px;
   color: var(--muted);
+  isolation: isolate;
   font-weight: 850;
   text-decoration: none;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
   white-space: nowrap;
+}
+
+.nav-link::after {
+  position: absolute;
+  right: 18px;
+  bottom: 6px;
+  left: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  content: "";
 }
 
 .nav-link:hover,
 .nav-link.active {
+  color: var(--text);
+  border-color: rgba(68, 215, 199, 0.55);
+  background: rgba(68, 215, 199, 0.12);
+}
+
+.nav-link.active {
   color: #101113;
-  background: var(--cyan);
+  background: linear-gradient(135deg, var(--cyan), var(--gold));
+  box-shadow: 0 10px 26px rgba(68, 215, 199, 0.16);
+}
+
+.nav-link.active::after {
+  background: rgba(16, 17, 19, 0.6);
+}
+
+.nav-link:active {
+  transform: translateY(1px);
+}
+
+.nav-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.nav-link.active .nav-icon {
+  background: rgba(16, 17, 19, 0.12);
 }
 
 h1,
@@ -305,6 +355,13 @@ button:focus-visible {
   color: #101113;
   background: var(--green);
   border-color: transparent;
+}
+
+.token.move {
+  color: #101113;
+  background: linear-gradient(90deg, var(--cyan), var(--gold));
+  border-color: transparent;
+  min-width: 58px;
 }
 
 .recipe-actions {
@@ -690,10 +747,6 @@ button:focus-visible {
   }
 
   .card-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .page-nav {
     grid-template-columns: 1fr;
   }
 
