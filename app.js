@@ -85,12 +85,14 @@ const els = {
   createPage: $("#create"),
   libraryPage: $("#library"),
   notesPage: $("#notes"),
-  charactersPageLink: $("#charactersPageLink"),
+  workflowNav: $("#workflowNav"),
+  changeCharacterButton: $("#changeCharacterButton"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
   notesPageLink: $("#notesPageLink"),
   characterGrid: $("#characterGrid"),
-  selectedCharacterPill: $("#selectedCharacterPill"),
+  exportVaultButton: $("#exportVaultButton"),
+  importVaultButton: $("#importVaultButton"),
   form: $("#comboForm"),
   characterNoteForm: $("#characterNoteForm"),
   editingId: $("#editingId"),
@@ -127,7 +129,7 @@ function init() {
   state.combos = loadCombos();
   state.characterNotes = loadCharacterNotes();
   state.selectedCharacter = loadSelectedCharacter();
-  hydrateSharedCombo(false);
+  hydrateSharedData(false);
   renderCharacterOptions();
   renderCharacterGrid();
   applySelectedCharacter(false);
@@ -145,10 +147,9 @@ function init() {
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
   window.addEventListener("popstate", showCurrentPage);
-  els.charactersPageLink.addEventListener("click", (event) => {
-    event.preventDefault();
-    goToPage("characters");
-  });
+  els.changeCharacterButton.addEventListener("click", () => goToPage("characters"));
+  els.exportVaultButton.addEventListener("click", exportVaultData);
+  els.importVaultButton.addEventListener("click", () => hydrateSharedData(true));
   els.createPageLink.addEventListener("click", (event) => {
     event.preventDefault();
     goToPage("create");
@@ -179,7 +180,7 @@ function bindEvents() {
   });
   els.cancelEditButton.addEventListener("click", resetForm);
   els.newComboButton.addEventListener("click", resetForm);
-  els.importSharedButton.addEventListener("click", () => hydrateSharedCombo(true));
+  els.importSharedButton.addEventListener("click", () => hydrateSharedData(true));
   els.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value.trim().toLowerCase();
     renderList();
@@ -210,11 +211,11 @@ function renderPage(page) {
   els.createPage.hidden = isCharacters || isLibrary || isNotes;
   els.libraryPage.hidden = !isLibrary;
   els.notesPage.hidden = !isNotes;
-  els.charactersPageLink.classList.toggle("active", isCharacters);
+  els.workflowNav.hidden = isCharacters;
+  els.changeCharacterButton.hidden = isCharacters;
   els.createPageLink.classList.toggle("active", !isCharacters && !isLibrary && !isNotes);
   els.libraryPageLink.classList.toggle("active", isLibrary);
   els.notesPageLink.classList.toggle("active", isNotes);
-  setCurrentPageLink(els.charactersPageLink, isCharacters);
   setCurrentPageLink(els.createPageLink, !isCharacters && !isLibrary && !isNotes);
   setCurrentPageLink(els.libraryPageLink, isLibrary);
   setCurrentPageLink(els.notesPageLink, isNotes);
@@ -299,6 +300,8 @@ function loadSelectedCharacter() {
 function persistSelectedCharacter() {
   if (state.selectedCharacter) {
     localStorage.setItem(SELECTED_CHARACTER_STORAGE_KEY, state.selectedCharacter);
+  } else {
+    localStorage.removeItem(SELECTED_CHARACTER_STORAGE_KEY);
   }
 }
 
@@ -348,7 +351,6 @@ function applySelectedCharacter(renderAfterApply = true) {
 
 function renderSelectedCharacterLabels() {
   const label = state.selectedCharacter || "未選択";
-  els.selectedCharacterPill.textContent = label;
   selectedCharacterLabels.forEach((element) => {
     element.textContent = label;
   });
@@ -574,7 +576,7 @@ async function shareCombo(id) {
   const combo = state.combos.find((item) => item.id === id);
   if (!combo) return;
 
-  const payload = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(combo)))));
+  const payload = encodePayload(combo);
   const shareUrl = new URL(location.href);
   shareUrl.searchParams.set("combo", payload);
   shareUrl.hash = "create";
@@ -595,6 +597,27 @@ async function copySavedComboLink(id) {
     showToast("コンボへのリンクをコピーしました");
   } catch {
     prompt("コンボへのリンク", url);
+  }
+}
+
+async function exportVaultData() {
+  const payload = {
+    version: 1,
+    combos: state.combos,
+    characterNotes: state.characterNotes,
+    selectedCharacter: state.selectedCharacter
+  };
+  const url = new URL(location.href);
+  url.searchParams.set("vault", encodePayload(payload));
+  url.searchParams.delete("combo");
+  url.searchParams.delete("saved");
+  url.hash = "characters";
+
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    showToast("保存データ共有URLをコピーしました");
+  } catch {
+    prompt("保存データ共有URL", url.toString());
   }
 }
 
@@ -689,8 +712,14 @@ function unlinkDeletedCombo(comboId) {
   });
 }
 
-function hydrateSharedCombo(notifyWhenMissing = true) {
+function hydrateSharedData(notifyWhenMissing = true) {
   const params = new URLSearchParams(location.search);
+  const vault = params.get("vault");
+  if (vault) {
+    hydrateSharedVault(vault);
+    return;
+  }
+
   const shared = params.get("combo");
   if (!shared) {
     if (notifyWhenMissing) showToast("共有URLのデータがありません");
@@ -698,7 +727,7 @@ function hydrateSharedCombo(notifyWhenMissing = true) {
   }
 
   try {
-    const combo = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(shared)))));
+    const combo = decodePayload(shared);
     if (!isComboLike(combo)) throw new Error("Invalid combo payload");
 
     const normalizedCombo = normalizeCombo(combo);
@@ -718,6 +747,38 @@ function hydrateSharedCombo(notifyWhenMissing = true) {
   } catch {
     showToast("共有データを読み込めませんでした");
   }
+}
+
+function hydrateSharedVault(shared) {
+  try {
+    const vault = decodePayload(shared);
+    if (!vault || !Array.isArray(vault.combos)) throw new Error("Invalid vault payload");
+
+    state.combos = vault.combos.filter(isComboLike).map(normalizeCombo);
+    state.characterNotes = vault.characterNotes && typeof vault.characterNotes === "object" ? vault.characterNotes : {};
+    state.selectedCharacter = characters.includes(vault.selectedCharacter) ? vault.selectedCharacter : "";
+    persist();
+    persistCharacterNotes();
+    persistSelectedCharacter();
+
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete("vault");
+    history.replaceState(null, "", cleanUrl.toString());
+    applySelectedCharacter();
+    renderCharacterGrid();
+    showToast("保存データを取り込みました");
+    goToPage(state.selectedCharacter ? "library" : "characters");
+  } catch {
+    showToast("保存データを読み込めませんでした");
+  }
+}
+
+function encodePayload(payload) {
+  return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+}
+
+function decodePayload(payload) {
+  return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(payload)))));
 }
 
 function normalizeCombo(combo) {

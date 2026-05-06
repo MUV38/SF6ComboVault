@@ -85,7 +85,7 @@ button:disabled {
 
 .page-nav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(104px, 1fr));
+  grid-template-columns: repeat(3, minmax(112px, 1fr));
   gap: 6px;
   min-width: min(420px, 100%);
   padding: 5px;
@@ -196,6 +196,11 @@ h3 {
 #create,
 #library,
 #notes {
+  display: none;
+}
+
+.page-nav[hidden],
+#changeCharacterButton[hidden] {
   display: none;
 }
 
