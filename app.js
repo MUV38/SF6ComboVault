@@ -62,12 +62,13 @@ const commandGroups = {
 
 const directionCommands = new Set(commandGroups.motion.commands);
 const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
+const odCommand = "OD";
 const commandDisplayMap = {
   "1": "↙",
   "2": "↓",
   "3": "↘",
   "4": "←",
-  "5": "・",
+  "5": "N",
   "6": "→",
   "7": "↖",
   "8": "↑",
@@ -422,7 +423,7 @@ function addRecipeStep(step) {
 
   if (canMergeAsMove(previous, step)) {
     state.recipe[state.recipe.length - 1] = {
-      value: `${previous.value}${step.value}`,
+      value: mergeMoveValue(previous, step),
       type: "move"
     };
     return;
@@ -847,10 +848,22 @@ function groupRecipeForDisplay(recipe) {
     const next = recipe[index + 1];
 
     if (canMergeAsMove(current, next)) {
-      grouped.push({
-        value: `${current.value}${next.value}`,
+      const merged = {
+        value: mergeMoveValue(current, next),
         type: "move"
-      });
+      };
+      const afterNext = recipe[index + 2];
+
+      if (canMergeAsMove(merged, afterNext)) {
+        grouped.push({
+          value: mergeMoveValue(merged, afterNext),
+          type: "move"
+        });
+        index += 2;
+        continue;
+      }
+
+      grouped.push(merged);
       index += 1;
     } else {
       grouped.push(current);
@@ -861,12 +874,35 @@ function groupRecipeForDisplay(recipe) {
 }
 
 function canMergeAsMove(current, next) {
-  return current
-    && next
-    && current.type === "motion"
-    && next.type === "attack"
-    && directionCommands.has(current.value)
-    && attackCommands.has(next.value);
+  if (!current || !next) return false;
+
+  return (isMotionStep(current) && isAttackStep(next))
+    || (isOdStep(current) && isMotionStep(next))
+    || (isOdMotionStep(current) && isAttackStep(next));
+}
+
+function mergeMoveValue(current, next) {
+  return `${current.value}${next.value}`;
+}
+
+function isMotionStep(step) {
+  return step.type === "motion" && directionCommands.has(step.value);
+}
+
+function isAttackStep(step) {
+  return step.type === "attack" && attackCommands.has(step.value);
+}
+
+function isOdStep(step) {
+  return step.type === "attack" && step.value === odCommand;
+}
+
+function isOdMotionStep(step) {
+  const parsed = parseMoveValue(step.value);
+  return step.type === "move"
+    && step.value.startsWith(odCommand)
+    && parsed.direction
+    && !parsed.attack;
 }
 
 function renderToken(step) {
@@ -890,11 +926,37 @@ function renderCommandButtonInput(value, type) {
 }
 
 function renderMoveInput(value) {
+  const parsed = parseMoveValue(value);
+  if (!parsed.direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+
+  const parts = [];
+  if (parsed.isOd) parts.push(renderAttackInput(odCommand));
+  parts.push(renderMotionInput(parsed.direction));
+  if (parsed.attack) parts.push(renderAttackInput(parsed.attack));
+
+  return parts.join('<span class="input-plus">+</span>');
+}
+
+function parseMoveValue(value) {
+  const isOd = value.startsWith(odCommand);
+  const commandValue = isOd ? value.slice(odCommand.length) : value;
   const direction = [...directionCommands]
     .sort((a, b) => b.length - a.length)
-    .find((command) => value.startsWith(command));
-  if (!direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
-  return `${renderMotionInput(direction)}<span class="input-plus">+</span>${renderAttackInput(value.slice(direction.length))}`;
+    .find((command) => commandValue.startsWith(command));
+
+  if (!direction) {
+    return {
+      isOd,
+      direction: "",
+      attack: ""
+    };
+  }
+
+  return {
+    isOd,
+    direction,
+    attack: commandValue.slice(direction.length)
+  };
 }
 
 function renderMotionInput(value) {
