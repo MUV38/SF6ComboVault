@@ -896,7 +896,8 @@ function renderMotionInput(value) {
 }
 
 function renderAttackInput(value) {
-  return `<span class="input-key input-attack">${escapeHtml(formatAttackValue(value))}</span>`;
+  const attackType = getAttackInputType(value);
+  return `<span class="input-key input-attack input-${attackType}">${escapeHtml(formatAttackValue(value))}</span>`;
 }
 
 function formatCommandValue(value) {
@@ -905,6 +906,14 @@ function formatCommandValue(value) {
 
 function formatAttackValue(value) {
   return attackDisplayMap[value] || value;
+}
+
+function getAttackInputType(value) {
+  if (value.includes("P")) return "punch";
+  if (value.includes("K")) return "kick";
+  if (value === "投げ") return "throw";
+  if (value === "OD") return "drive";
+  return "system";
 }
 
 function escapeHtml(value) {

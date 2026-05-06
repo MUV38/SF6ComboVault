@@ -12,6 +12,11 @@
   --cyan: #44d7c7;
   --green: #7bd88f;
   --blue: #75a7ff;
+  --sf6-punch: #ff4c5d;
+  --sf6-kick: #30a7ff;
+  --sf6-drive: #b8ff4f;
+  --sf6-command-face: #151922;
+  --sf6-command-line: #4b5567;
   --danger: #ff9b9b;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
 }
@@ -415,13 +420,13 @@ button:focus-visible {
 }
 
 .token.motion {
-  background: rgba(68, 215, 199, 0.08);
-  border-color: rgba(68, 215, 199, 0.32);
+  background: rgba(48, 167, 255, 0.08);
+  border-color: rgba(48, 167, 255, 0.34);
 }
 
 .token.attack {
-  background: rgba(255, 200, 87, 0.08);
-  border-color: rgba(255, 200, 87, 0.32);
+  background: rgba(255, 76, 93, 0.08);
+  border-color: rgba(255, 76, 93, 0.34);
 }
 
 .token.system {
@@ -432,8 +437,8 @@ button:focus-visible {
 
 .token.move {
   gap: 5px;
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(68, 215, 199, 0.32);
+  background: rgba(10, 12, 17, 0.72);
+  border-color: rgba(75, 85, 103, 0.9);
   min-width: 0;
 }
 
@@ -442,25 +447,62 @@ button:focus-visible {
   place-items: center;
   min-width: 30px;
   min-height: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  border: 1px solid var(--sf6-command-line);
+  border-radius: 5px;
   padding: 0 8px;
-  color: var(--text);
-  background: #0f1115;
+  color: #f9fbff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0)),
+    var(--sf6-command-face);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 2px 0 rgba(0, 0, 0, 0.42);
   font-weight: 900;
   line-height: 1;
 }
 
 .input-dir {
-  color: #101113;
-  background: var(--cyan);
-  border-color: transparent;
+  color: #f3fbff;
+  border-color: rgba(48, 167, 255, 0.78);
+  background:
+    linear-gradient(180deg, rgba(48, 167, 255, 0.3), rgba(48, 167, 255, 0.05)),
+    #111722;
+  text-shadow: 0 0 10px rgba(48, 167, 255, 0.58);
 }
 
 .input-attack {
-  color: #101113;
-  background: var(--gold);
-  border-color: transparent;
+  color: #ffffff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.32);
+}
+
+.input-punch {
+  border-color: rgba(255, 76, 93, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+    var(--sf6-punch);
+}
+
+.input-kick {
+  border-color: rgba(48, 167, 255, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+    var(--sf6-kick);
+}
+
+.input-throw {
+  border-color: rgba(177, 107, 255, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+    #9b5cff;
+}
+
+.input-drive {
+  color: #111318;
+  border-color: rgba(184, 255, 79, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0)),
+    var(--sf6-drive);
+  text-shadow: none;
 }
 
 .input-text {
