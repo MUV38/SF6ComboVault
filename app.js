@@ -118,6 +118,15 @@ function init() {
 
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
+  window.addEventListener("popstate", showCurrentPage);
+  els.createPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("create");
+  });
+  els.libraryPageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("library");
+  });
   els.form.addEventListener("submit", saveCombo);
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
@@ -151,14 +160,18 @@ function bindEvents() {
 
 function showCurrentPage() {
   const page = location.hash === "#library" ? "library" : "create";
+  renderPage(page);
+}
+
+function renderPage(page) {
   const isLibrary = page === "library";
 
   els.createPage.hidden = isLibrary;
   els.libraryPage.hidden = !isLibrary;
   els.createPageLink.classList.toggle("active", !isLibrary);
   els.libraryPageLink.classList.toggle("active", isLibrary);
-  els.createPageLink.setAttribute("aria-current", !isLibrary ? "page" : "false");
-  els.libraryPageLink.setAttribute("aria-current", isLibrary ? "page" : "false");
+  setCurrentPageLink(els.createPageLink, !isLibrary);
+  setCurrentPageLink(els.libraryPageLink, isLibrary);
   document.title = isLibrary ? "保存済みコンボ | SF6 Combo Vault" : "コンボ作成 | SF6 Combo Vault";
 
   if (isLibrary) {
@@ -171,11 +184,18 @@ function showCurrentPage() {
 
 function goToPage(page) {
   const hash = page === "library" ? "#library" : "#create";
-  if (location.hash === hash) {
-    showCurrentPage();
-    return;
+  renderPage(page);
+  if (location.hash !== hash) {
+    history.pushState(null, "", hash);
   }
-  location.hash = hash;
+}
+
+function setCurrentPageLink(link, isCurrent) {
+  if (isCurrent) {
+    link.setAttribute("aria-current", "page");
+  } else {
+    link.removeAttribute("aria-current");
+  }
 }
 
 function loadCombos() {
