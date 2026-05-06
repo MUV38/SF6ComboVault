@@ -193,8 +193,6 @@ function bindEvents() {
   });
   els.form.addEventListener("submit", saveCombo);
   els.characterNoteForm.addEventListener("submit", saveCharacterNote);
-  els.noteCharacterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
-  els.characterInput.addEventListener("change", (event) => selectCharacter(event.target.value, false));
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
     renderFavoriteDraft();
@@ -212,11 +210,6 @@ function bindEvents() {
   els.importSharedButton.addEventListener("click", () => hydrateSharedData(true));
   els.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value.trim().toLowerCase();
-    renderList();
-  });
-  els.characterFilter.addEventListener("change", (event) => {
-    state.filters.character = event.target.value;
-    if (event.target.value !== "all") selectCharacter(event.target.value, false);
     renderList();
   });
   els.favoriteFilter.addEventListener("click", () => {
@@ -522,6 +515,12 @@ function filteredCombos() {
 function saveCombo(event) {
   event.preventDefault();
 
+  if (!state.selectedCharacter) {
+    goToPage("characters");
+    showToast("キャラを選択してください");
+    return;
+  }
+
   if (!state.recipe.length) {
     showToast("コマンドを1つ以上選択してください");
     return;
@@ -529,10 +528,9 @@ function saveCombo(event) {
 
   const editingId = els.editingId.value;
   const now = Date.now();
-  if (!state.selectedCharacter) selectCharacter(els.characterInput.value, false);
   const combo = {
     id: editingId || crypto.randomUUID(),
-    character: els.characterInput.value,
+    character: state.selectedCharacter,
     title: els.titleInput.value.trim(),
     tags: parseTags(els.tagsInput.value),
     notes: els.notesInput.value.trim(),
@@ -576,6 +574,7 @@ function resetForm() {
   els.editingId.value = "";
   state.recipe = [];
   state.favoriteDraft = false;
+  applySelectedCharacter(false);
   renderRecipe();
   renderFavoriteDraft();
 }
@@ -651,7 +650,7 @@ async function exportVaultData() {
 }
 
 function renderCharacterNote() {
-  const character = els.noteCharacterInput.value || characters[0];
+  const character = state.selectedCharacter || characters[0];
   const note = getCharacterNote(character);
   const characterCombos = state.combos.filter((combo) => combo.character === character);
   const linkedCombos = characterCombos.filter((combo) => note.comboIds.includes(combo.id));
@@ -670,7 +669,12 @@ function getCharacterNote(character) {
 
 function saveCharacterNote(event) {
   event.preventDefault();
-  const character = els.noteCharacterInput.value;
+  const character = state.selectedCharacter;
+  if (!character) {
+    goToPage("characters");
+    showToast("キャラを選択してください");
+    return;
+  }
   const current = getCharacterNote(character);
   state.characterNotes[character] = {
     text: els.characterNoteInput.value.trim(),
@@ -764,11 +768,16 @@ function hydrateSharedData(notifyWhenMissing = true) {
     normalizedCombo.createdAt = Date.now();
     normalizedCombo.updatedAt = Date.now();
     state.combos = [normalizedCombo, ...state.combos];
+    if (characters.includes(normalizedCombo.character)) {
+      state.selectedCharacter = normalizedCombo.character;
+      persistSelectedCharacter();
+    }
     persist();
 
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete("combo");
     history.replaceState(null, "", cleanUrl.toString());
+    applySelectedCharacter();
     renderFilters();
     renderList();
     showToast("共有コンボを取り込みました");
