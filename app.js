@@ -897,7 +897,11 @@ function renderMotionInput(value) {
 
 function renderAttackInput(value) {
   const attackType = getAttackInputType(value);
-  return `<span class="input-key input-attack input-${attackType}">${escapeHtml(formatAttackValue(value))}</span>`;
+  const parts = getAttackInputParts(value);
+  if (!parts) {
+    return `<span class="input-key input-attack input-${attackType}">${escapeHtml(formatAttackValue(value))}</span>`;
+  }
+  return `<span class="input-key input-attack input-${attackType}"><span class="attack-strength">${escapeHtml(parts.strength)}</span><span class="attack-mark">${escapeHtml(parts.mark)}</span></span>`;
 }
 
 function formatCommandValue(value) {
@@ -914,6 +918,16 @@ function getAttackInputType(value) {
   if (value === "投げ") return "throw";
   if (value === "OD") return "drive";
   return "system";
+}
+
+function getAttackInputParts(value) {
+  const label = formatAttackValue(value);
+  const match = label.match(/^(.+)([PK])$/);
+  if (!match) return null;
+  return {
+    strength: match[1],
+    mark: match[2]
+  };
 }
 
 function escapeHtml(value) {
