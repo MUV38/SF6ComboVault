@@ -210,46 +210,13 @@ h3 {
   justify-content: center;
 }
 
-.page-view {
-  display: block;
-}
-
-#create,
-#library,
-#notes {
-  display: none;
-}
-
 .page-nav[hidden],
 #changeCharacterButton[hidden] {
   display: none;
 }
 
-#create:target,
-#library:target,
-#notes:target {
+.page-view {
   display: block;
-}
-
-body:has(#library:target) #create,
-body:has(#notes:target) #create {
-  display: none;
-}
-
-#characters {
-  display: block;
-}
-
-body.app-ready #create,
-body.app-ready #library,
-body.app-ready #notes {
-  display: block;
-}
-
-body:has(#create:target) #characters,
-body:has(#library:target) #characters,
-body:has(#notes:target) #characters {
-  display: none;
 }
 
 .page-view[hidden] {

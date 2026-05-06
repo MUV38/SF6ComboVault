@@ -228,6 +228,7 @@ function renderPage(page) {
   const isCharacters = page === "characters";
   const isLibrary = page === "library";
   const isNotes = page === "notes";
+  document.body.dataset.page = page;
 
   els.charactersPage.hidden = !isCharacters;
   els.createPage.hidden = isCharacters || isLibrary || isNotes;
