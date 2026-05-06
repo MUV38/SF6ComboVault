@@ -67,7 +67,8 @@ button:disabled {
 .form-actions,
 .card-actions,
 .recipe-strip,
-.topbar-actions {
+.topbar-actions,
+.heading-actions {
   display: flex;
   align-items: center;
 }
@@ -80,6 +81,35 @@ button:disabled {
 
 .brand-block {
   min-width: 0;
+}
+
+.page-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(15, 17, 21, 0.72);
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: #101113;
+  background: var(--cyan);
 }
 
 h1,
@@ -120,6 +150,15 @@ h3 {
   align-items: start;
 }
 
+.workspace.single-page {
+  grid-template-columns: minmax(0, 980px);
+  justify-content: center;
+}
+
+.page-view[hidden] {
+  display: none;
+}
+
 .composer,
 .library {
   overflow: clip;
@@ -130,8 +169,7 @@ h3 {
 }
 
 .composer {
-  position: sticky;
-  top: 16px;
+  position: static;
 }
 
 .panel-heading {
@@ -143,6 +181,10 @@ h3 {
 
 .compact-heading {
   background: rgba(236, 75, 75, 0.06);
+}
+
+.heading-actions {
+  gap: 8px;
 }
 
 .combo-form,
@@ -498,7 +540,7 @@ button:focus-visible {
 }
 
 @media (min-width: 1180px) {
-  .combo-list {
+  .single-page .combo-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -535,6 +577,10 @@ button:focus-visible {
     flex-direction: column;
     gap: 12px;
     padding-bottom: 12px;
+  }
+
+  .page-nav {
+    grid-template-columns: 1fr 1fr;
   }
 
   h1 {
@@ -608,7 +654,7 @@ button:focus-visible {
   }
 
   .form-actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .tag-filter {
@@ -644,6 +690,14 @@ button:focus-visible {
   }
 
   .card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .page-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
     grid-template-columns: 1fr;
   }
 }

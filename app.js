@@ -1,11 +1,42 @@
 const STORAGE_KEY = "sf6-combo-vault";
 
+const characterNameMap = {
+  "A.K.I.": "エーケーアイ",
+  Akuma: "豪鬼",
+  Blanka: "ブランカ",
+  Cammy: "キャミィ",
+  "Chun-Li": "春麗",
+  Custom: "カスタム",
+  "Dee Jay": "ディージェイ",
+  Dhalsim: "ダルシム",
+  "E. Honda": "エドモンド本田",
+  Ed: "エド",
+  Elena: "エレナ",
+  Guile: "ガイル",
+  Jamie: "ジェイミー",
+  JP: "ジェイピー",
+  Juri: "ジュリ",
+  Ken: "ケン",
+  Kimberly: "キンバリー",
+  Lily: "リリー",
+  Luke: "ルーク",
+  Mai: "不知火舞",
+  Manon: "マノン",
+  Marisa: "マリーザ",
+  "M. Bison": "ベガ",
+  Rashid: "ラシード",
+  Ryu: "リュウ",
+  Terry: "テリー",
+  Zangief: "ザンギエフ"
+};
+
 const characters = [
-  "Ryu", "Luke", "Jamie", "Chun-Li", "Guile", "Kimberly", "Juri", "Ken",
-  "Blanka", "Dhalsim", "E. Honda", "Dee Jay", "Manon", "Marisa", "JP",
-  "Zangief", "Lily", "Cammy", "Rashid", "A.K.I.", "Ed", "Akuma", "M. Bison",
-  "Terry", "Mai", "Elena", "Custom"
-];
+  "エーケーアイ", "エド", "エドモンド本田", "エレナ", "ガイル", "カスタム",
+  "キャミィ", "キンバリー", "ケン", "豪鬼", "ザンギエフ", "ジェイミー",
+  "ジェイピー", "ジュリ", "春麗", "ダルシム", "ディージェイ", "テリー",
+  "不知火舞", "ブランカ", "ベガ", "マノン", "マリーザ", "ラシード",
+  "リュウ", "リリー", "ルーク"
+].sort((a, b) => a.localeCompare(b, "ja"));
 
 const commandGroups = {
   motion: {
@@ -38,6 +69,10 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const els = {
+  createPage: $("#createPage"),
+  libraryPage: $("#libraryPage"),
+  createPageLink: $("#createPageLink"),
+  libraryPageLink: $("#libraryPageLink"),
   form: $("#comboForm"),
   editingId: $("#editingId"),
   characterInput: $("#characterInput"),
@@ -73,9 +108,11 @@ function init() {
   renderFilters();
   renderList();
   bindEvents();
+  showCurrentPage();
 }
 
 function bindEvents() {
+  window.addEventListener("hashchange", showCurrentPage);
   els.form.addEventListener("submit", saveCombo);
   els.favoriteInput.addEventListener("click", () => {
     state.favoriteDraft = !state.favoriteDraft;
@@ -90,10 +127,7 @@ function bindEvents() {
     renderRecipe();
   });
   els.cancelEditButton.addEventListener("click", resetForm);
-  els.newComboButton.addEventListener("click", () => {
-    resetForm();
-    document.querySelector(".composer").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  els.newComboButton.addEventListener("click", resetForm);
   els.importSharedButton.addEventListener("click", () => hydrateSharedCombo(true));
   els.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value.trim().toLowerCase();
@@ -110,10 +144,39 @@ function bindEvents() {
   });
 }
 
+function showCurrentPage() {
+  const page = location.hash === "#library" ? "library" : "create";
+  const isLibrary = page === "library";
+
+  els.createPage.hidden = isLibrary;
+  els.libraryPage.hidden = !isLibrary;
+  els.createPageLink.classList.toggle("active", !isLibrary);
+  els.libraryPageLink.classList.toggle("active", isLibrary);
+  els.createPageLink.setAttribute("aria-current", !isLibrary ? "page" : "false");
+  els.libraryPageLink.setAttribute("aria-current", isLibrary ? "page" : "false");
+  document.title = isLibrary ? "保存済みコンボ | SF6 Combo Vault" : "コンボ作成 | SF6 Combo Vault";
+
+  if (isLibrary) {
+    renderFilters();
+    renderList();
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function goToPage(page) {
+  const hash = page === "library" ? "#library" : "#create";
+  if (location.hash === hash) {
+    showCurrentPage();
+    return;
+  }
+  location.hash = hash;
+}
+
 function loadCombos() {
   try {
     const combos = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(combos) ? combos : [];
+    return Array.isArray(combos) ? combos.map(normalizeCombo) : [];
   } catch {
     return [];
   }
@@ -274,6 +337,7 @@ function saveCombo(event) {
   renderFilters();
   renderList();
   showToast("コンボを保存しました");
+  goToPage("library");
 }
 
 function editCombo(id) {
@@ -289,7 +353,7 @@ function editCombo(id) {
   state.favoriteDraft = combo.favorite;
   renderRecipe();
   renderFavoriteDraft();
-  document.querySelector(".composer").scrollIntoView({ behavior: "smooth", block: "start" });
+  goToPage("create");
 }
 
 function resetForm() {
@@ -326,7 +390,7 @@ async function shareCombo(id) {
   const payload = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(combo)))));
   const shareUrl = new URL(location.href);
   shareUrl.searchParams.set("combo", payload);
-  shareUrl.hash = "";
+  shareUrl.hash = "create";
 
   try {
     await navigator.clipboard.writeText(shareUrl.toString());
@@ -348,10 +412,11 @@ function hydrateSharedCombo(notifyWhenMissing = true) {
     const combo = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(shared)))));
     if (!isComboLike(combo)) throw new Error("Invalid combo payload");
 
-    combo.id = crypto.randomUUID();
-    combo.createdAt = Date.now();
-    combo.updatedAt = Date.now();
-    state.combos = [combo, ...state.combos];
+    const normalizedCombo = normalizeCombo(combo);
+    normalizedCombo.id = crypto.randomUUID();
+    normalizedCombo.createdAt = Date.now();
+    normalizedCombo.updatedAt = Date.now();
+    state.combos = [normalizedCombo, ...state.combos];
     persist();
 
     const cleanUrl = new URL(location.href);
@@ -360,9 +425,27 @@ function hydrateSharedCombo(notifyWhenMissing = true) {
     renderFilters();
     renderList();
     showToast("共有コンボを取り込みました");
+    goToPage("library");
   } catch {
     showToast("共有データを読み込めませんでした");
   }
+}
+
+function normalizeCombo(combo) {
+  return {
+    ...combo,
+    character: normalizeCharacterName(combo.character),
+    tags: Array.isArray(combo.tags) ? combo.tags : [],
+    notes: typeof combo.notes === "string" ? combo.notes : "",
+    recipe: Array.isArray(combo.recipe) ? combo.recipe : [],
+    favorite: Boolean(combo.favorite),
+    createdAt: Number(combo.createdAt) || Date.now(),
+    updatedAt: Number(combo.updatedAt) || Date.now()
+  };
+}
+
+function normalizeCharacterName(character) {
+  return characterNameMap[character] || character;
 }
 
 function isComboLike(combo) {

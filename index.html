@@ -13,24 +13,27 @@
           <p class="eyebrow">Street Fighter 6</p>
           <h1>Combo Vault</h1>
         </div>
-        <div class="topbar-actions">
-          <button class="icon-button" id="importSharedButton" type="button" title="共有URLから読み込み" aria-label="共有URLから読み込み">
-            <span aria-hidden="true">↓</span>
-          </button>
-          <button class="text-button" id="newComboButton" type="button">新規作成</button>
-        </div>
+        <nav class="page-nav" aria-label="ページ切り替え">
+          <a class="nav-link" id="createPageLink" href="#create">コンボ作成</a>
+          <a class="nav-link" id="libraryPageLink" href="#library">保存済み</a>
+        </nav>
       </header>
 
-      <main class="workspace">
-        <section class="composer" aria-labelledby="composer-title">
+      <main class="workspace single-page">
+        <section class="page-view composer" id="createPage" aria-labelledby="composer-title">
           <div class="panel-heading compact-heading">
             <div>
               <p class="eyebrow">Recipe Builder</p>
               <h2 id="composer-title">コンボ作成</h2>
             </div>
-            <button class="icon-button favorite-toggle" id="favoriteInput" type="button" title="お気に入り" aria-label="お気に入り">
-              <span aria-hidden="true">☆</span>
-            </button>
+            <div class="heading-actions">
+              <button class="icon-button" id="importSharedButton" type="button" title="共有URLから読み込み" aria-label="共有URLから読み込み">
+                <span aria-hidden="true">↓</span>
+              </button>
+              <button class="icon-button favorite-toggle" id="favoriteInput" type="button" title="お気に入り" aria-label="お気に入り">
+                <span aria-hidden="true">☆</span>
+              </button>
+            </div>
           </div>
 
           <form id="comboForm" class="combo-form">
@@ -76,11 +79,12 @@
             <div class="form-actions">
               <button class="primary-button" type="submit">保存</button>
               <button class="ghost-button" id="cancelEditButton" type="button">編集解除</button>
+              <button class="ghost-button" id="newComboButton" type="button">新規作成</button>
             </div>
           </form>
         </section>
 
-        <section class="library" aria-labelledby="library-title">
+        <section class="page-view library" id="libraryPage" aria-labelledby="library-title" hidden>
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Library</p>
