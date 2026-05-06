@@ -471,6 +471,7 @@ button:focus-visible {
   place-items: center;
   min-width: 32px;
   min-height: 32px;
+  max-width: 100%;
   border: 1px solid var(--sf6-command-line);
   border-radius: 999px;
   padding: 0 8px;
@@ -485,6 +486,7 @@ button:focus-visible {
     0 2px 0 rgba(0, 0, 0, 0.55);
   font-weight: 900;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .input-dir {
@@ -563,6 +565,20 @@ button:focus-visible {
 .input-text {
   color: var(--text);
   background: var(--surface-strong);
+}
+
+.input-picker {
+  min-width: 44px;
+  padding: 0 10px;
+  font-size: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-system .input-picker {
+  min-width: 0;
+  width: min(100%, 78px);
+  font-size: 15px;
 }
 
 .input-plus {
@@ -700,7 +716,7 @@ button:focus-visible {
 
 .command-buttons {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
   gap: 8px;
 }
 
@@ -709,6 +725,7 @@ button:focus-visible {
   letter-spacing: 0;
   gap: 4px;
   padding: 6px;
+  overflow: hidden;
 }
 
 .favorite-toggle.active,

@@ -406,7 +406,7 @@ function renderCommandTabs() {
 function renderCommandButtons() {
   const group = commandGroups[state.activeCommandGroup];
   els.commandButtons.innerHTML = group.commands
-    .map((command) => `<button class="command-button command-${state.activeCommandGroup}" type="button" data-command="${escapeHtml(command)}">${renderCommandInput(command, state.activeCommandGroup)}</button>`)
+    .map((command) => `<button class="command-button command-${state.activeCommandGroup}" type="button" data-command="${escapeHtml(command)}">${renderCommandButtonInput(command, state.activeCommandGroup)}</button>`)
     .join("");
 
   els.commandButtons.querySelectorAll("button").forEach((button) => {
@@ -879,6 +879,14 @@ function renderCommandInput(value, type) {
   if (type === "attack") return renderAttackInput(value);
   if (type === "move") return renderMoveInput(value);
   return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+}
+
+function renderCommandButtonInput(value, type) {
+  if (type === "motion") {
+    return `<span class="input-key input-dir input-picker">${escapeHtml(formatCommandValue(value))}</span>`;
+  }
+  if (type === "attack") return renderAttackInput(value);
+  return `<span class="input-key input-text input-picker">${escapeHtml(value)}</span>`;
 }
 
 function renderMoveInput(value) {
