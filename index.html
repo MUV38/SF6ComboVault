@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260506-14" />
+    <link rel="stylesheet" href="styles.css?v=20260506-15" />
   </head>
   <body>
     <div class="app-shell">
@@ -37,6 +37,9 @@
             <div class="heading-actions">
               <button class="ghost-button" id="exportVaultButton" type="button">保存データ共有</button>
               <button class="ghost-button" id="importVaultButton" type="button">読み込み</button>
+              <button class="ghost-button" id="exportJsonButton" type="button">JSON書き出し</button>
+              <button class="ghost-button" id="importJsonButton" type="button">JSON読み込み</button>
+              <input id="importJsonInput" type="file" accept="application/json,.json" hidden />
             </div>
           </div>
 
@@ -200,6 +203,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260506-14"></script>
+    <script src="app.js?v=20260506-15"></script>
   </body>
 </html>

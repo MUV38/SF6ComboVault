@@ -255,6 +255,8 @@ h3 {
 
 .heading-actions {
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .selected-character-pill {
