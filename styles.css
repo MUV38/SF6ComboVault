@@ -307,6 +307,13 @@ button:focus-visible {
   border-color: transparent;
 }
 
+.token.move {
+  color: #101113;
+  background: linear-gradient(90deg, var(--cyan), var(--gold));
+  border-color: transparent;
+  min-width: 58px;
+}
+
 .recipe-actions {
   display: flex;
   gap: 8px;
