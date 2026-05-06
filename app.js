@@ -122,6 +122,9 @@ const els = {
   characterGrid: $("#characterGrid"),
   exportVaultButton: $("#exportVaultButton"),
   importVaultButton: $("#importVaultButton"),
+  exportJsonButton: $("#exportJsonButton"),
+  importJsonButton: $("#importJsonButton"),
+  importJsonInput: $("#importJsonInput"),
   form: $("#comboForm"),
   characterNoteForm: $("#characterNoteForm"),
   editingId: $("#editingId"),
@@ -154,12 +157,12 @@ const els = {
 
 const selectedCharacterLabels = Array.from(document.querySelectorAll(".current-character-label"));
 
-function init() {
+async function init() {
   state.combos = loadCombos();
   state.characterNotes = loadCharacterNotes();
   state.selectedCharacter = loadSelectedCharacter();
-  hydrateSharedData(false);
   renderCharacterOptions();
+  await hydrateSharedData(false);
   renderCharacterGrid();
   applySelectedCharacter(false);
   renderCommandTabs();
@@ -179,6 +182,9 @@ function bindEvents() {
   els.changeCharacterButton.addEventListener("click", () => goToPage("characters"));
   els.exportVaultButton.addEventListener("click", exportVaultData);
   els.importVaultButton.addEventListener("click", () => hydrateSharedData(true));
+  els.exportJsonButton.addEventListener("click", exportVaultJson);
+  els.importJsonButton.addEventListener("click", () => els.importJsonInput.click());
+  els.importJsonInput.addEventListener("change", importVaultJson);
   els.createPageLink.addEventListener("click", (event) => {
     event.preventDefault();
     goToPage("create");
@@ -605,7 +611,7 @@ async function shareCombo(id) {
   const combo = state.combos.find((item) => item.id === id);
   if (!combo) return;
 
-  const payload = encodePayload(combo);
+  const payload = await encodePayload(combo);
   const shareUrl = new URL(location.href);
   shareUrl.searchParams.set("combo", payload);
   shareUrl.hash = "create";
@@ -630,14 +636,9 @@ async function copySavedComboLink(id) {
 }
 
 async function exportVaultData() {
-  const payload = {
-    version: 1,
-    combos: state.combos,
-    characterNotes: state.characterNotes,
-    selectedCharacter: state.selectedCharacter
-  };
+  const payload = createVaultPayload();
   const url = new URL(location.href);
-  url.searchParams.set("vault", encodePayload(payload));
+  url.searchParams.set("vault", await encodePayload(payload));
   url.searchParams.delete("combo");
   url.searchParams.delete("saved");
   url.hash = "characters";
@@ -647,6 +648,45 @@ async function exportVaultData() {
     showToast("保存データ共有URLをコピーしました");
   } catch {
     prompt("保存データ共有URL", url.toString());
+  }
+}
+
+function createVaultPayload() {
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    combos: state.combos,
+    characterNotes: state.characterNotes,
+    selectedCharacter: state.selectedCharacter
+  };
+}
+
+function exportVaultJson() {
+  const blob = new Blob([JSON.stringify(createVaultPayload(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  link.href = url;
+  link.download = `sf6-combo-vault-${date}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("JSONを書き出しました");
+}
+
+async function importVaultJson(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  try {
+    const vault = JSON.parse(await file.text());
+    applyVaultPayload(vault);
+    showToast("JSONを読み込みました");
+    goToPage(state.selectedCharacter ? "library" : "characters");
+  } catch {
+    showToast("JSONを読み込めませんでした");
   }
 }
 
@@ -746,11 +786,11 @@ function unlinkDeletedCombo(comboId) {
   });
 }
 
-function hydrateSharedData(notifyWhenMissing = true) {
+async function hydrateSharedData(notifyWhenMissing = true) {
   const params = new URLSearchParams(location.search);
   const vault = params.get("vault");
   if (vault) {
-    hydrateSharedVault(vault);
+    await hydrateSharedVault(vault);
     return;
   }
 
@@ -761,7 +801,7 @@ function hydrateSharedData(notifyWhenMissing = true) {
   }
 
   try {
-    const combo = decodePayload(shared);
+    const combo = await decodePayload(shared);
     if (!isComboLike(combo)) throw new Error("Invalid combo payload");
 
     const normalizedCombo = normalizeCombo(combo);
@@ -788,17 +828,10 @@ function hydrateSharedData(notifyWhenMissing = true) {
   }
 }
 
-function hydrateSharedVault(shared) {
+async function hydrateSharedVault(shared) {
   try {
-    const vault = decodePayload(shared);
-    if (!vault || !Array.isArray(vault.combos)) throw new Error("Invalid vault payload");
-
-    state.combos = vault.combos.filter(isComboLike).map(normalizeCombo);
-    state.characterNotes = vault.characterNotes && typeof vault.characterNotes === "object" ? vault.characterNotes : {};
-    state.selectedCharacter = characters.includes(vault.selectedCharacter) ? vault.selectedCharacter : "";
-    persist();
-    persistCharacterNotes();
-    persistSelectedCharacter();
+    const vault = await decodePayload(shared);
+    applyVaultPayload(vault);
 
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete("vault");
@@ -812,12 +845,63 @@ function hydrateSharedVault(shared) {
   }
 }
 
-function encodePayload(payload) {
-  return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+function applyVaultPayload(vault) {
+  if (!vault || !Array.isArray(vault.combos)) throw new Error("Invalid vault payload");
+
+  state.combos = vault.combos.filter(isComboLike).map(normalizeCombo);
+  state.characterNotes = vault.characterNotes && typeof vault.characterNotes === "object" ? vault.characterNotes : {};
+  state.selectedCharacter = characters.includes(vault.selectedCharacter) ? vault.selectedCharacter : "";
+  persist();
+  persistCharacterNotes();
+  persistSelectedCharacter();
+  applySelectedCharacter();
+  renderCharacterGrid();
 }
 
-function decodePayload(payload) {
-  return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(payload)))));
+async function encodePayload(payload) {
+  const json = JSON.stringify(payload);
+  if (!("CompressionStream" in window)) return `b64:${textToBase64Url(json)}`;
+
+  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  return `gz:${bytesToBase64Url(bytes)}`;
+}
+
+async function decodePayload(payload) {
+  const value = decodeURIComponent(payload);
+  if (value.startsWith("gz:")) {
+    if (!("DecompressionStream" in window)) throw new Error("Compressed payload is not supported");
+    const bytes = base64UrlToBytes(value.slice(3));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return JSON.parse(await new Response(stream).text());
+  }
+  if (value.startsWith("b64:")) {
+    return JSON.parse(base64UrlToText(value.slice(4)));
+  }
+
+  return JSON.parse(decodeURIComponent(escape(atob(value))));
+}
+
+function textToBase64Url(text) {
+  return bytesToBase64Url(new TextEncoder().encode(text));
+}
+
+function base64UrlToText(value) {
+  return new TextDecoder().decode(base64UrlToBytes(value));
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(value) {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 function normalizeCombo(combo) {
