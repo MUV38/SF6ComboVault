@@ -45,6 +45,7 @@ const characters = [
 const officialCharacterSlugs = {
   "A.K.I.": "aki",
   JP: "jp",
+  "アレックス": "alex",
   "エド": "ed",
   "エドモンド本田": "ehonda",
   "エレナ": "elena",
