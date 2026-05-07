@@ -748,7 +748,7 @@ function renderOfficialLinks(character) {
 
   const baseUrl = `https://www.streetfighter.com/6/ja-jp/character/${slug}`;
   els.officialLinkPanel.innerHTML = `
-    <a class="official-link" href="${baseUrl}/command" target="_blank" rel="noreferrer">公式コマンドリスト</a>
+    <a class="official-link" href="${baseUrl}/movelist" target="_blank" rel="noreferrer">公式コマンドリスト</a>
     <a class="official-link" href="${baseUrl}/frame" target="_blank" rel="noreferrer">公式フレーム表</a>
   `;
 }
