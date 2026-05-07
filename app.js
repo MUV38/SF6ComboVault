@@ -42,16 +42,46 @@ const characters = [
   "マリーザ", "ラシード", "リュウ", "リリー", "ルーク"
 ].sort((a, b) => a.localeCompare(b, "ja"));
 
+const officialCharacterSlugs = {
+  "A.K.I.": "aki",
+  JP: "jp",
+  "アレックス": "alex",
+  "エド": "ed",
+  "エドモンド本田": "ehonda",
+  "エレナ": "elena",
+  "ガイル": "guile",
+  "キャミィ": "cammy",
+  "キンバリー": "kimberly",
+  "ケン": "ken",
+  "豪鬼": "akuma",
+  "ザンギエフ": "zangief",
+  "ジェイミー": "jamie",
+  "ジュリ": "juri",
+  "春麗": "chun-li",
+  "ダルシム": "dhalsim",
+  "ディージェイ": "dee-jay",
+  "テリー": "terry",
+  "不知火舞": "mai",
+  "ブランカ": "blanka",
+  "ベガ": "mbison",
+  "マノン": "manon",
+  "マリーザ": "marisa",
+  "ラシード": "rashid",
+  "リュウ": "ryu",
+  "リリー": "lily",
+  "ルーク": "luke"
+};
+
 const commandGroups = {
   motion: {
     label: "方向",
     meta: "MOVE",
-    commands: ["5", "2", "3", "6", "4", "8", "236", "214", "623", "421", "22", "66", "44", "j."]
+    commands: ["5", "2", "3", "6", "4", "8", "236", "214", "623", "421", "41236", "63214", "360", "22", "66", "44", "j."]
   },
   attack: {
     label: "攻撃",
     meta: "HIT",
-    commands: ["LP", "MP", "HP", "LK", "MK", "HK", "P", "K", "投げ", "OD"]
+    commands: ["LP", "MP", "HP", "LK", "MK", "HK", "P", "K", "投げ", "OD", "TC"]
   },
   system: {
     label: "システム",
@@ -61,8 +91,10 @@ const commandGroups = {
 };
 
 const directionCommands = new Set(commandGroups.motion.commands);
-const attackCommands = new Set(commandGroups.attack.commands.filter((command) => command !== "OD"));
 const odCommand = "OD";
+const tcCommand = "TC";
+const modifierCommands = new Set([odCommand, tcCommand]);
+const attackCommands = new Set(commandGroups.attack.commands.filter((command) => !modifierCommands.has(command)));
 const commandDisplayMap = {
   "1": "↙",
   "2": "↓",
@@ -79,6 +111,9 @@ const commandDisplayMap = {
   "214": "↓↙←",
   "236": "↓↘→",
   "421": "←↓↙",
+  "41236": "←↙↓↘→",
+  "63214": "→↘↓↙←",
+  "360": "一回転",
   "623": "→↓↘",
   "j.": "J"
 };
@@ -146,6 +181,7 @@ const els = {
   noteCharacterInput: $("#noteCharacterInput"),
   characterNoteInput: $("#characterNoteInput"),
   noteSummary: $("#noteSummary"),
+  officialLinkPanel: $("#officialLinkPanel"),
   linkableComboList: $("#linkableComboList"),
   favoriteFilter: $("#favoriteFilter"),
   tagFilter: $("#tagFilter"),
@@ -698,7 +734,23 @@ function renderCharacterNote() {
 
   els.characterNoteInput.value = note.text;
   els.noteSummary.textContent = `保存済み ${characterCombos.length}件 / リンク ${linkedCombos.length}件`;
+  renderOfficialLinks(character);
   renderLinkableCombos(character, note.comboIds);
+}
+
+function renderOfficialLinks(character) {
+  const slug = officialCharacterSlugs[character];
+  els.officialLinkPanel.hidden = !slug;
+  if (!slug) {
+    els.officialLinkPanel.innerHTML = "";
+    return;
+  }
+
+  const baseUrl = `https://www.streetfighter.com/6/ja-jp/character/${slug}`;
+  els.officialLinkPanel.innerHTML = `
+    <a class="official-link" href="${baseUrl}/command" target="_blank" rel="noreferrer">公式コマンドリスト</a>
+    <a class="official-link" href="${baseUrl}/frame" target="_blank" rel="noreferrer">公式フレーム表</a>
+  `;
 }
 
 function getCharacterNote(character) {
@@ -972,7 +1024,9 @@ function canMergeAsMove(current, next) {
 
   return (isMotionStep(current) && isAttackStep(next))
     || (isOdStep(current) && isMotionStep(next))
-    || (isOdMotionStep(current) && isAttackStep(next));
+    || (isOdMotionStep(current) && isAttackStep(next))
+    || (isTcStep(current) && isAttackStep(next))
+    || (isTcAttackStep(current) && isAttackStep(next));
 }
 
 function mergeMoveValue(current, next) {
@@ -991,12 +1045,23 @@ function isOdStep(step) {
   return step.type === "attack" && step.value === odCommand;
 }
 
+function isTcStep(step) {
+  return step.type === "attack" && step.value === tcCommand;
+}
+
 function isOdMotionStep(step) {
   const parsed = parseMoveValue(step.value);
   return step.type === "move"
-    && step.value.startsWith(odCommand)
+    && parsed.modifier === odCommand
     && parsed.direction
-    && !parsed.attack;
+    && !parsed.attacks.length;
+}
+
+function isTcAttackStep(step) {
+  const parsed = parseMoveValue(step.value);
+  return step.type === "move"
+    && parsed.modifier === tcCommand
+    && parsed.attacks.length === 1;
 }
 
 function renderToken(step) {
@@ -1021,40 +1086,68 @@ function renderCommandButtonInput(value, type) {
 
 function renderMoveInput(value) {
   const parsed = parseMoveValue(value);
-  if (!parsed.direction) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
+  if (!parsed.direction && !parsed.attacks.length) return `<span class="input-key input-text">${escapeHtml(value)}</span>`;
 
   const parts = [];
-  if (parsed.isOd) parts.push(renderAttackInput(odCommand));
-  parts.push(renderMotionInput(parsed.direction));
-  if (parsed.attack) parts.push(renderAttackInput(parsed.attack));
+  if (parsed.modifier) parts.push(renderAttackInput(parsed.modifier));
+  if (parsed.direction) parts.push(renderMotionInput(parsed.direction));
+  parsed.attacks.forEach((attack) => parts.push(renderAttackInput(attack)));
 
   return parts.join('<span class="input-plus">+</span>');
 }
 
 function parseMoveValue(value) {
-  const isOd = value.startsWith(odCommand);
-  const commandValue = isOd ? value.slice(odCommand.length) : value;
+  const modifier = [...modifierCommands].find((command) => value.startsWith(command)) || "";
+  const commandValue = modifier ? value.slice(modifier.length) : value;
   const direction = [...directionCommands]
     .sort((a, b) => b.length - a.length)
     .find((command) => commandValue.startsWith(command));
 
+  if (modifier === tcCommand) {
+    return {
+      modifier,
+      direction: "",
+      attacks: parseAttackSequence(commandValue)
+    };
+  }
+
   if (!direction) {
     return {
-      isOd,
+      modifier,
       direction: "",
-      attack: ""
+      attacks: parseAttackSequence(commandValue)
     };
   }
 
   return {
-    isOd,
+    modifier,
     direction,
-    attack: commandValue.slice(direction.length)
+    attacks: parseAttackSequence(commandValue.slice(direction.length))
   };
 }
 
+function parseAttackSequence(value) {
+  const attacks = [];
+  let remaining = value;
+  const sortedAttacks = [...attackCommands].sort((a, b) => b.length - a.length);
+
+  while (remaining) {
+    const attack = sortedAttacks.find((command) => remaining.startsWith(command));
+    if (!attack) return value ? [value] : [];
+    attacks.push(attack);
+    remaining = remaining.slice(attack.length);
+  }
+
+  return attacks;
+}
+
 function renderMotionInput(value) {
-  return [...formatCommandValue(value)]
+  const displayValue = formatCommandValue(value);
+  if (value === "360") {
+    return `<span class="input-key input-dir">${escapeHtml(displayValue)}</span>`;
+  }
+
+  return [...displayValue]
     .map((direction) => `<span class="input-key input-dir">${escapeHtml(direction)}</span>`)
     .join("");
 }
@@ -1081,6 +1174,7 @@ function getAttackInputType(value) {
   if (value.includes("K")) return "kick";
   if (value === "投げ") return "throw";
   if (value === "OD") return "drive";
+  if (value === "TC") return "target";
   return "system";
 }
 

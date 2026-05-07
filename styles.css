@@ -516,6 +516,16 @@ button:focus-visible {
   text-shadow: none;
 }
 
+.input-target {
+  color: #111318;
+  border-color: rgba(248, 211, 77, 0.82);
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.35), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.08)),
+    var(--gold);
+  text-shadow: none;
+}
+
 .attack-strength {
   font-size: 10px;
   font-weight: 950;
@@ -831,13 +841,39 @@ button:focus-visible {
   font-weight: 750;
 }
 
-.linked-combo-panel {
+.linked-combo-panel,
+.official-link-panel {
   display: grid;
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #11141a;
+}
+
+.official-link-panel {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.official-link-panel[hidden] {
+  display: none !important;
+}
+
+.official-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid rgba(30, 232, 255, 0.34);
+  border-radius: 6px;
+  color: var(--cyan);
+  background: rgba(30, 232, 255, 0.08);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.official-link:hover {
+  border-color: var(--cyan);
 }
 
 .linked-heading {
