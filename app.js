@@ -72,8 +72,6 @@ const officialCharacterSlugs = {
   "ルーク": "luke"
 };
 
-const comboTrialData = {};
-
 const commandGroups = {
   motion: {
     label: "方向",
@@ -184,8 +182,6 @@ const els = {
   characterNoteInput: $("#characterNoteInput"),
   noteSummary: $("#noteSummary"),
   officialLinkPanel: $("#officialLinkPanel"),
-  comboTrialPanel: $("#comboTrialPanel"),
-  comboTrialList: $("#comboTrialList"),
   linkableComboList: $("#linkableComboList"),
   favoriteFilter: $("#favoriteFilter"),
   tagFilter: $("#tagFilter"),
@@ -739,7 +735,6 @@ function renderCharacterNote() {
   els.characterNoteInput.value = note.text;
   els.noteSummary.textContent = `保存済み ${characterCombos.length}件 / リンク ${linkedCombos.length}件`;
   renderOfficialLinks(character);
-  renderComboTrials(character);
   renderLinkableCombos(character, note.comboIds);
 }
 
@@ -756,22 +751,6 @@ function renderOfficialLinks(character) {
     <a class="official-link" href="${baseUrl}/command" target="_blank" rel="noreferrer">公式コマンドリスト</a>
     <a class="official-link" href="${baseUrl}/frame" target="_blank" rel="noreferrer">公式フレーム表</a>
   `;
-}
-
-function renderComboTrials(character) {
-  const trials = comboTrialData[character] || [];
-  els.comboTrialPanel.hidden = !trials.length;
-  if (!trials.length) {
-    els.comboTrialList.innerHTML = "";
-    return;
-  }
-
-  els.comboTrialList.innerHTML = trials.map((trial) => `
-    <div class="combo-trial-item">
-      <strong>${escapeHtml(trial.title)}</strong>
-      <span class="card-recipe">${groupRecipeForDisplay(trial.recipe).map(renderToken).join("")}</span>
-    </div>
-  `).join("");
 }
 
 function getCharacterNote(character) {
