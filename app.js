@@ -2,6 +2,7 @@ const STORAGE_KEY = "sf6-combo-vault";
 const CHARACTER_NOTES_STORAGE_KEY = "sf6-character-notes";
 const SELECTED_CHARACTER_STORAGE_KEY = "sf6-selected-character";
 const PRACTICE_STORAGE_KEY = "sf6-practice-data";
+const PRACTICE_RECOMMENDATION_STORAGE_KEY = "sf6-practice-recommendations";
 
 const characterNameMap = {
   "A.K.I.": "A.K.I.",
@@ -142,6 +143,7 @@ const state = {
   activePracticeSide: "p1",
   returnPageAfterCharacterSelect: "",
   practiceRecommendationSeed: 0,
+  practiceRecommendationCache: {},
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -232,6 +234,7 @@ async function init() {
   state.combos = loadCombos();
   state.characterNotes = loadCharacterNotes();
   state.practiceData = loadPracticeData();
+  state.practiceRecommendationCache = loadPracticeRecommendationCache();
   state.selectedCharacter = loadSelectedCharacter();
   renderCharacterOptions();
   notifySharedDataAvailable();
@@ -439,6 +442,19 @@ function loadPracticeData() {
 
 function persistPracticeData() {
   localStorage.setItem(PRACTICE_STORAGE_KEY, JSON.stringify(state.practiceData));
+}
+
+function loadPracticeRecommendationCache() {
+  try {
+    const data = JSON.parse(localStorage.getItem(PRACTICE_RECOMMENDATION_STORAGE_KEY));
+    return data && typeof data === "object" ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistPracticeRecommendationCache() {
+  localStorage.setItem(PRACTICE_RECOMMENDATION_STORAGE_KEY, JSON.stringify(state.practiceRecommendationCache));
 }
 
 function loadSelectedCharacter() {
@@ -889,11 +905,31 @@ function renderPracticeRecommendations() {
 
 function regeneratePracticeRecommendations() {
   state.practiceRecommendationSeed += 1;
+  getPracticeRecommendations(true);
   renderPracticeRecommendations();
   showToast("今日の練習リストを再生成しました");
 }
 
-function getPracticeRecommendations() {
+function getPracticeRecommendations(forceRegenerate = false) {
+  const cacheKey = getPracticeRecommendationCacheKey();
+  const today = getPracticeDateKey();
+  const cached = state.practiceRecommendationCache[cacheKey];
+
+  if (!forceRegenerate && cached?.date === today && Array.isArray(cached.comboIds)) {
+    const cachedRecommendations = hydratePracticeRecommendations(cached.comboIds);
+    if (cachedRecommendations.length) return cachedRecommendations;
+  }
+
+  const recommendations = createPracticeRecommendations();
+  state.practiceRecommendationCache[cacheKey] = {
+    date: today,
+    comboIds: recommendations.map((item) => item.combo.id)
+  };
+  persistPracticeRecommendationCache();
+  return recommendations;
+}
+
+function createPracticeRecommendations() {
   const now = Date.now();
   const selectedCombos = state.combos.filter((combo) => !state.selectedCharacter || combo.character === state.selectedCharacter);
 
@@ -920,6 +956,31 @@ function getPracticeRecommendations() {
     .sort(sortPracticeCandidate);
 
   return balancePracticeRecommendations(candidates);
+}
+
+function hydratePracticeRecommendations(comboIds) {
+  return comboIds
+    .map((id) => state.combos.find((combo) => combo.id === id))
+    .filter(Boolean)
+    .map((combo, index) => {
+      const practice = getPracticeEntry(combo.id);
+      const totals = getPracticeTotals(practice);
+      const weakestSide = getWeakestPracticeSide(practice);
+      const attempts = totals.success + totals.failure;
+      const rate = attempts ? Math.round((totals.success / attempts) * 100) : 0;
+      const daysSincePractice = totals.lastPracticedAt ? (Date.now() - totals.lastPracticedAt) / 86400000 : Infinity;
+      const difficulty = getPracticeDifficulty(combo);
+      const reason = getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide, difficulty);
+      return { combo, practice, attempts, rate, score: comboIds.length - index, reason, difficulty };
+    });
+}
+
+function getPracticeRecommendationCacheKey() {
+  return state.selectedCharacter || "all";
+}
+
+function getPracticeDateKey() {
+  return new Date().toLocaleDateString("sv-SE");
 }
 
 function getPracticeRotationBoost(combo, seed) {
