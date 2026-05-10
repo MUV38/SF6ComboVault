@@ -198,7 +198,7 @@ async function init() {
   state.characterNotes = loadCharacterNotes();
   state.selectedCharacter = loadSelectedCharacter();
   renderCharacterOptions();
-  await hydrateSharedData(false);
+  notifySharedDataAvailable();
   renderCharacterGrid();
   applySelectedCharacter(false);
   renderCommandTabs();
@@ -718,8 +718,8 @@ async function importVaultJson(event) {
 
   try {
     const vault = JSON.parse(await file.text());
-    applyVaultPayload(vault);
-    showToast("JSONを読み込みました");
+    const result = applyVaultPayload(vault);
+    showToast(`JSONを追加しました（新規コンボ ${result.addedCombos}件）`);
     goToPage(state.selectedCharacter ? "library" : "characters");
   } catch {
     showToast("JSONを読み込めませんでした");
@@ -856,13 +856,9 @@ async function hydrateSharedData(notifyWhenMissing = true) {
     const combo = await decodePayload(shared);
     if (!isComboLike(combo)) throw new Error("Invalid combo payload");
 
-    const normalizedCombo = normalizeCombo(combo);
-    normalizedCombo.id = crypto.randomUUID();
-    normalizedCombo.createdAt = Date.now();
-    normalizedCombo.updatedAt = Date.now();
-    state.combos = [normalizedCombo, ...state.combos];
-    if (characters.includes(normalizedCombo.character)) {
-      state.selectedCharacter = normalizedCombo.character;
+    const result = importCombo(combo);
+    if (characters.includes(result.combo.character)) {
+      state.selectedCharacter = result.combo.character;
       persistSelectedCharacter();
     }
     persist();
@@ -873,24 +869,31 @@ async function hydrateSharedData(notifyWhenMissing = true) {
     applySelectedCharacter();
     renderFilters();
     renderList();
-    showToast("共有コンボを取り込みました");
+    showToast(result.added ? "共有コンボを追加しました" : "同じ共有コンボは追加しませんでした");
     goToPage("library");
   } catch {
     showToast("共有データを読み込めませんでした");
   }
 }
 
+function notifySharedDataAvailable() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("vault") || params.has("combo")) {
+    showToast("共有データがあります。読み込みボタンで取り込めます");
+  }
+}
+
 async function hydrateSharedVault(shared) {
   try {
     const vault = await decodePayload(shared);
-    applyVaultPayload(vault);
+    const result = applyVaultPayload(vault);
 
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete("vault");
     history.replaceState(null, "", cleanUrl.toString());
     applySelectedCharacter();
     renderCharacterGrid();
-    showToast("保存データを取り込みました");
+    showToast(`保存データを追加しました（新規コンボ ${result.addedCombos}件）`);
     goToPage(state.selectedCharacter ? "library" : "characters");
   } catch {
     showToast("保存データを読み込めませんでした");
@@ -900,14 +903,112 @@ async function hydrateSharedVault(shared) {
 function applyVaultPayload(vault) {
   if (!vault || !Array.isArray(vault.combos)) throw new Error("Invalid vault payload");
 
-  state.combos = vault.combos.filter(isComboLike).map(normalizeCombo);
-  state.characterNotes = vault.characterNotes && typeof vault.characterNotes === "object" ? vault.characterNotes : {};
-  state.selectedCharacter = characters.includes(vault.selectedCharacter) ? vault.selectedCharacter : "";
+  const idMap = new Map();
+  const beforeCount = state.combos.length;
+  const existingIds = new Set(state.combos.map((combo) => combo.id));
+  const existingSignatures = new Map(state.combos.map((combo) => [getComboSignature(combo), combo.id]));
+  const importedCombos = vault.combos.filter(isComboLike).map(normalizeCombo);
+
+  importedCombos.forEach((combo) => {
+    const signature = getComboSignature(combo);
+    const duplicateId = existingIds.has(combo.id) ? combo.id : existingSignatures.get(signature);
+
+    if (duplicateId) {
+      idMap.set(combo.id, duplicateId);
+      return;
+    }
+
+    const importedId = combo.id;
+    const id = importedId && !existingIds.has(importedId) ? importedId : crypto.randomUUID();
+    const imported = {
+      ...combo,
+      id,
+      createdAt: Number(combo.createdAt) || Date.now(),
+      updatedAt: Number(combo.updatedAt) || Date.now()
+    };
+    state.combos.unshift(imported);
+    existingIds.add(id);
+    existingSignatures.set(signature, id);
+    idMap.set(importedId, id);
+  });
+
+  mergeCharacterNotes(vault.characterNotes, idMap);
+  if (!state.selectedCharacter && characters.includes(vault.selectedCharacter)) {
+    state.selectedCharacter = vault.selectedCharacter;
+  }
   persist();
   persistCharacterNotes();
   persistSelectedCharacter();
   applySelectedCharacter();
   renderCharacterGrid();
+  return {
+    addedCombos: state.combos.length - beforeCount
+  };
+}
+
+function importCombo(combo) {
+  const normalizedCombo = normalizeCombo(combo);
+  const signature = getComboSignature(normalizedCombo);
+  const duplicate = state.combos.find((item) => item.id === normalizedCombo.id || getComboSignature(item) === signature);
+  if (duplicate) {
+    return {
+      added: false,
+      combo: duplicate
+    };
+  }
+
+  const imported = {
+    ...normalizedCombo,
+    id: normalizedCombo.id || crypto.randomUUID(),
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  state.combos = [imported, ...state.combos];
+  return {
+    added: true,
+    combo: imported
+  };
+}
+
+function mergeCharacterNotes(importedNotes, idMap) {
+  if (!importedNotes || typeof importedNotes !== "object") return;
+
+  Object.entries(importedNotes).forEach(([character, note]) => {
+    if (!characters.includes(character) || !note || typeof note !== "object") return;
+
+    const current = getCharacterNote(character);
+    const importedText = typeof note.text === "string" ? note.text.trim() : "";
+    const text = mergeNoteText(current.text, importedText);
+    const importedComboIds = Array.isArray(note.comboIds) ? note.comboIds : [];
+    const comboIds = [
+      ...new Set([
+        ...current.comboIds,
+        ...importedComboIds.map((id) => idMap.get(id) || id).filter((id) => state.combos.some((combo) => combo.id === id))
+      ])
+    ];
+
+    state.characterNotes[character] = {
+      text,
+      comboIds
+    };
+  });
+}
+
+function mergeNoteText(currentText, importedText) {
+  if (!importedText) return currentText || "";
+  if (!currentText) return importedText;
+  if (currentText.includes(importedText)) return currentText;
+  return `${currentText}\n\n--- 取り込みメモ ---\n${importedText}`;
+}
+
+function getComboSignature(combo) {
+  return JSON.stringify({
+    character: combo.character,
+    title: combo.title.trim(),
+    tags: [...combo.tags].sort((a, b) => a.localeCompare(b, "ja")),
+    notes: combo.notes.trim(),
+    recipe: combo.recipe.map((step) => ({ value: step.value, type: step.type }))
+  });
 }
 
 async function encodePayload(payload) {
