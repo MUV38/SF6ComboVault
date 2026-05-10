@@ -591,7 +591,7 @@ function renderList() {
     card.querySelector(".favorite-card").textContent = combo.favorite ? "★" : "☆";
     card.querySelector(".favorite-card").classList.toggle("active", combo.favorite);
     card.querySelector(".card-recipe").innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
-    card.querySelector(".card-tags").innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+    card.querySelector(".card-tags").innerHTML = renderTags(combo.tags);
     const practice = getPracticeEntry(combo.id);
     const totals = getPracticeTotals(practice);
     const attempts = totals.success + totals.failure;
@@ -711,7 +711,7 @@ function renderPractice() {
 
   els.practiceTitle.textContent = combo.title;
   els.practiceCharacter.textContent = combo.character;
-  els.practiceTags.innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+  els.practiceTags.innerHTML = renderTags(combo.tags);
   els.practiceRecipe.innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
   els.practiceComboNotes.textContent = combo.notes;
   els.practiceComboNotes.hidden = !combo.notes;
@@ -1586,6 +1586,10 @@ function isTcAttackStep(step) {
 function renderToken(step) {
   const type = ["motion", "attack", "system", "move"].includes(step.type) ? step.type : "system";
   return `<span class="token ${type}">${renderCommandInput(step.value, type)}</span>`;
+}
+
+function renderTags(tags) {
+  return tags.map((tag) => `<span class="tag-pill">${escapeHtml(tag)}</span>`).join("");
 }
 
 function renderCommandInput(value, type) {
