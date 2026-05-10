@@ -106,7 +106,7 @@ button:disabled {
 
 .page-nav {
   display: grid;
-  grid-template-columns: repeat(3, minmax(112px, 1fr));
+  grid-template-columns: repeat(4, minmax(96px, 1fr));
   gap: 6px;
   min-width: min(420px, 100%);
   padding: 5px;
@@ -226,7 +226,8 @@ h3 {
 .composer,
 .library,
 .character-picker,
-.notes {
+.notes,
+.practice {
   overflow: clip;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -851,6 +852,52 @@ button:focus-visible {
   background: #11141a;
 }
 
+.practice-body {
+  display: grid;
+  gap: 16px;
+  padding: clamp(14px, 2vw, 18px);
+}
+
+.practice-body[hidden] {
+  display: none !important;
+}
+
+.practice-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.practice-recipe {
+  min-height: 72px;
+}
+
+.practice-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.practice-stats div {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #11141a;
+}
+
+.practice-stats span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.practice-stats strong {
+  font-size: 22px;
+}
+
 .official-link-panel {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
@@ -1041,6 +1088,15 @@ button:focus-visible {
   .topbar-actions,
   .form-actions {
     width: 100%;
+  }
+
+  .practice-hero,
+  .practice-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-hero {
+    display: grid;
   }
 
   .topbar-actions {

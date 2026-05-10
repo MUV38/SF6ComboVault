@@ -1,6 +1,7 @@
 const STORAGE_KEY = "sf6-combo-vault";
 const CHARACTER_NOTES_STORAGE_KEY = "sf6-character-notes";
 const SELECTED_CHARACTER_STORAGE_KEY = "sf6-selected-character";
+const PRACTICE_STORAGE_KEY = "sf6-practice-data";
 
 const characterNameMap = {
   "A.K.I.": "A.K.I.",
@@ -130,7 +131,9 @@ const attackDisplayMap = {
 const state = {
   combos: [],
   characterNotes: {},
+  practiceData: {},
   selectedCharacter: "",
+  activePracticeId: "",
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -149,11 +152,13 @@ const els = {
   createPage: $("#create"),
   libraryPage: $("#library"),
   notesPage: $("#notes"),
+  practicePage: $("#practice"),
   workflowNav: $("#workflowNav"),
   changeCharacterButton: $("#changeCharacterButton"),
   createPageLink: $("#createPageLink"),
   libraryPageLink: $("#libraryPageLink"),
   notesPageLink: $("#notesPageLink"),
+  practicePageLink: $("#practicePageLink"),
   characterGrid: $("#characterGrid"),
   exportVaultButton: $("#exportVaultButton"),
   importVaultButton: $("#importVaultButton"),
@@ -187,6 +192,22 @@ const els = {
   tagFilter: $("#tagFilter"),
   comboList: $("#comboList"),
   comboCount: $("#comboCount"),
+  practiceTitle: $("#practiceTitle"),
+  practiceCharacter: $("#practiceCharacter"),
+  practiceTags: $("#practiceTags"),
+  practiceRecipe: $("#practiceRecipe"),
+  practiceComboNotes: $("#practiceComboNotes"),
+  practiceStatus: $("#practiceStatus"),
+  practiceSuccessRate: $("#practiceSuccessRate"),
+  practiceAttempts: $("#practiceAttempts"),
+  practiceLast: $("#practiceLast"),
+  practiceNoteInput: $("#practiceNoteInput"),
+  practiceSuccessButton: $("#practiceSuccessButton"),
+  practiceFailureButton: $("#practiceFailureButton"),
+  practiceSaveButton: $("#practiceSaveButton"),
+  practiceBackButton: $("#practiceBackButton"),
+  practiceEmpty: $("#practiceEmpty"),
+  practiceBody: $("#practiceBody"),
   toast: $("#toast"),
   template: $("#comboCardTemplate")
 };
@@ -196,6 +217,7 @@ const selectedCharacterLabels = Array.from(document.querySelectorAll(".current-c
 async function init() {
   state.combos = loadCombos();
   state.characterNotes = loadCharacterNotes();
+  state.practiceData = loadPracticeData();
   state.selectedCharacter = loadSelectedCharacter();
   renderCharacterOptions();
   notifySharedDataAvailable();
@@ -233,6 +255,10 @@ function bindEvents() {
     event.preventDefault();
     goToPage("notes");
   });
+  els.practicePageLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToPage("practice");
+  });
   els.form.addEventListener("submit", saveCombo);
   els.characterNoteForm.addEventListener("submit", saveCharacterNote);
   els.favoriteInput.addEventListener("click", () => {
@@ -259,6 +285,11 @@ function bindEvents() {
     els.favoriteFilter.setAttribute("aria-pressed", String(state.filters.favoriteOnly));
     renderList();
   });
+  els.practiceSuccessButton.addEventListener("click", () => recordPracticeAttempt(true));
+  els.practiceFailureButton.addEventListener("click", () => recordPracticeAttempt(false));
+  els.practiceSaveButton.addEventListener("click", savePracticeSettings);
+  els.practiceStatus.addEventListener("change", savePracticeSettings);
+  els.practiceBackButton.addEventListener("click", () => goToPage("library"));
 }
 
 function showCurrentPage() {
@@ -270,27 +301,33 @@ function renderPage(page) {
   const isCharacters = page === "characters";
   const isLibrary = page === "library";
   const isNotes = page === "notes";
+  const isPractice = page === "practice";
   document.body.dataset.page = page;
 
   els.charactersPage.hidden = !isCharacters;
-  els.createPage.hidden = isCharacters || isLibrary || isNotes;
+  els.createPage.hidden = isCharacters || isLibrary || isNotes || isPractice;
   els.libraryPage.hidden = !isLibrary;
   els.notesPage.hidden = !isNotes;
+  els.practicePage.hidden = !isPractice;
   els.workflowNav.hidden = isCharacters;
   els.changeCharacterButton.hidden = isCharacters;
-  els.createPageLink.classList.toggle("active", !isCharacters && !isLibrary && !isNotes);
+  els.createPageLink.classList.toggle("active", !isCharacters && !isLibrary && !isNotes && !isPractice);
   els.libraryPageLink.classList.toggle("active", isLibrary);
   els.notesPageLink.classList.toggle("active", isNotes);
-  setCurrentPageLink(els.createPageLink, !isCharacters && !isLibrary && !isNotes);
+  els.practicePageLink.classList.toggle("active", isPractice);
+  setCurrentPageLink(els.createPageLink, !isCharacters && !isLibrary && !isNotes && !isPractice);
   setCurrentPageLink(els.libraryPageLink, isLibrary);
   setCurrentPageLink(els.notesPageLink, isNotes);
+  setCurrentPageLink(els.practicePageLink, isPractice);
   document.title = isCharacters
     ? "キャラ選択 | SF6 Combo Vault"
     : isLibrary
     ? "保存済みコンボ | SF6 Combo Vault"
     : isNotes
       ? "キャラメモ | SF6 Combo Vault"
-      : "コンボ作成 | SF6 Combo Vault";
+      : isPractice
+        ? "コンボ練習 | SF6 Combo Vault"
+        : "コンボ作成 | SF6 Combo Vault";
 
   if (isCharacters) {
     renderCharacterGrid();
@@ -304,12 +341,15 @@ function renderPage(page) {
     applySelectedCharacter(false);
     renderCharacterNote();
   }
+  if (isPractice) {
+    renderPractice();
+  }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function goToPage(page) {
-  const hash = page === "library" ? "#library" : page === "notes" ? "#notes" : page === "characters" ? "#characters" : "#create";
+  const hash = page === "library" ? "#library" : page === "notes" ? "#notes" : page === "practice" ? "#practice" : page === "characters" ? "#characters" : "#create";
   if (location.hash !== hash) {
     history.pushState(null, "", hash);
   }
@@ -320,6 +360,7 @@ function getCurrentPage() {
   if (location.hash === "#characters") return "characters";
   if (location.hash === "#library") return "library";
   if (location.hash === "#notes") return "notes";
+  if (location.hash === "#practice") return "practice";
   return state.selectedCharacter ? "create" : "characters";
 }
 
@@ -355,6 +396,19 @@ function loadCharacterNotes() {
 
 function persistCharacterNotes() {
   localStorage.setItem(CHARACTER_NOTES_STORAGE_KEY, JSON.stringify(state.characterNotes));
+}
+
+function loadPracticeData() {
+  try {
+    const data = JSON.parse(localStorage.getItem(PRACTICE_STORAGE_KEY));
+    return data && typeof data === "object" ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistPracticeData() {
+  localStorage.setItem(PRACTICE_STORAGE_KEY, JSON.stringify(state.practiceData));
 }
 
 function loadSelectedCharacter() {
@@ -518,12 +572,17 @@ function renderList() {
     card.querySelector(".favorite-card").classList.toggle("active", combo.favorite);
     card.querySelector(".card-recipe").innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
     card.querySelector(".card-tags").innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+    const practice = getPracticeEntry(combo.id);
+    const attempts = practice.success + practice.failure;
+    const rate = attempts ? Math.round((practice.success / attempts) * 100) : 0;
+    card.querySelector(".practice-card").textContent = attempts ? `練習 ${rate}%` : "練習";
 
     const notes = card.querySelector(".card-notes");
     notes.textContent = combo.notes;
     notes.hidden = !combo.notes;
 
     card.querySelector(".favorite-card").addEventListener("click", () => toggleFavorite(combo.id));
+    card.querySelector(".practice-card").addEventListener("click", () => openPractice(combo.id));
     card.querySelector(".edit-card").addEventListener("click", () => editCombo(combo.id));
     card.querySelector(".share-card").addEventListener("click", () => shareCombo(combo.id));
     card.querySelector(".copy-link-card").addEventListener("click", () => copySavedComboLink(combo.id));
@@ -612,6 +671,85 @@ function editCombo(id) {
   goToPage("create");
 }
 
+function openPractice(id) {
+  state.activePracticeId = id;
+  renderPractice();
+  goToPage("practice");
+}
+
+function renderPractice() {
+  const combo = state.combos.find((item) => item.id === state.activePracticeId);
+  els.practiceEmpty.hidden = Boolean(combo);
+  els.practiceBody.hidden = !combo;
+  if (!combo) return;
+
+  const practice = getPracticeEntry(combo.id);
+  const attempts = practice.success + practice.failure;
+  const rate = attempts ? Math.round((practice.success / attempts) * 100) : 0;
+
+  els.practiceTitle.textContent = combo.title;
+  els.practiceCharacter.textContent = combo.character;
+  els.practiceTags.innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+  els.practiceRecipe.innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
+  els.practiceComboNotes.textContent = combo.notes;
+  els.practiceComboNotes.hidden = !combo.notes;
+  els.practiceStatus.value = practice.status;
+  els.practiceSuccessRate.textContent = `${rate}%`;
+  els.practiceAttempts.textContent = `${attempts}回`;
+  els.practiceLast.textContent = practice.lastPracticedAt ? formatPracticeDate(practice.lastPracticedAt) : "-";
+  els.practiceNoteInput.value = practice.note;
+}
+
+function getPracticeEntry(comboId) {
+  const practice = state.practiceData[comboId] || {};
+  return {
+    status: ["new", "training", "stable", "match"].includes(practice.status) ? practice.status : "new",
+    success: Number(practice.success) || 0,
+    failure: Number(practice.failure) || 0,
+    note: typeof practice.note === "string" ? practice.note : "",
+    lastPracticedAt: Number(practice.lastPracticedAt) || 0
+  };
+}
+
+function recordPracticeAttempt(isSuccess) {
+  if (!state.activePracticeId) return;
+  const practice = getPracticeEntry(state.activePracticeId);
+  state.practiceData[state.activePracticeId] = {
+    ...practice,
+    status: practice.status === "new" ? "training" : practice.status,
+    success: practice.success + (isSuccess ? 1 : 0),
+    failure: practice.failure + (isSuccess ? 0 : 1),
+    note: els.practiceNoteInput.value.trim(),
+    lastPracticedAt: Date.now()
+  };
+  persistPracticeData();
+  renderPractice();
+  renderList();
+}
+
+function savePracticeSettings() {
+  if (!state.activePracticeId) return;
+  const practice = getPracticeEntry(state.activePracticeId);
+  state.practiceData[state.activePracticeId] = {
+    ...practice,
+    status: els.practiceStatus.value,
+    note: els.practiceNoteInput.value.trim()
+  };
+  persistPracticeData();
+  renderPractice();
+  renderList();
+  showToast("練習データを保存しました");
+}
+
+function formatPracticeDate(value) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
 function resetForm() {
   els.form.reset();
   els.editingId.value = "";
@@ -634,8 +772,11 @@ function deleteCombo(id) {
   const combo = state.combos.find((item) => item.id === id);
   if (!combo || !confirm(`「${combo.title}」を削除しますか？`)) return;
   state.combos = state.combos.filter((item) => item.id !== id);
+  delete state.practiceData[id];
+  if (state.activePracticeId === id) state.activePracticeId = "";
   unlinkDeletedCombo(id);
   persist();
+  persistPracticeData();
   persistCharacterNotes();
   renderFilters();
   renderList();
@@ -693,6 +834,7 @@ function createVaultPayload() {
     exportedAt: new Date().toISOString(),
     combos: state.combos,
     characterNotes: state.characterNotes,
+    practiceData: state.practiceData,
     selectedCharacter: state.selectedCharacter
   };
 }
@@ -933,16 +1075,47 @@ function applyVaultPayload(vault) {
   });
 
   mergeCharacterNotes(vault.characterNotes, idMap);
+  mergePracticeData(vault.practiceData, idMap);
   if (!state.selectedCharacter && characters.includes(vault.selectedCharacter)) {
     state.selectedCharacter = vault.selectedCharacter;
   }
   persist();
   persistCharacterNotes();
+  persistPracticeData();
   persistSelectedCharacter();
   applySelectedCharacter();
   renderCharacterGrid();
   return {
     addedCombos: state.combos.length - beforeCount
+  };
+}
+
+function mergePracticeData(importedPracticeData, idMap) {
+  if (!importedPracticeData || typeof importedPracticeData !== "object") return;
+
+  Object.entries(importedPracticeData).forEach(([comboId, practice]) => {
+    const mappedId = idMap.get(comboId) || comboId;
+    if (!state.combos.some((combo) => combo.id === mappedId)) return;
+
+    const current = getPracticeEntry(mappedId);
+    const imported = normalizePracticeEntry(practice);
+    state.practiceData[mappedId] = {
+      status: current.status !== "new" ? current.status : imported.status,
+      success: Math.max(current.success, imported.success),
+      failure: Math.max(current.failure, imported.failure),
+      note: mergeNoteText(current.note, imported.note),
+      lastPracticedAt: Math.max(current.lastPracticedAt, imported.lastPracticedAt)
+    };
+  });
+}
+
+function normalizePracticeEntry(practice) {
+  return {
+    status: practice && ["new", "training", "stable", "match"].includes(practice.status) ? practice.status : "new",
+    success: Number(practice?.success) || 0,
+    failure: Number(practice?.failure) || 0,
+    note: typeof practice?.note === "string" ? practice.note : "",
+    lastPracticedAt: Number(practice?.lastPracticedAt) || 0
   };
 }
 

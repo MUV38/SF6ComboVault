@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260510-2" />
+    <link rel="stylesheet" href="styles.css?v=20260510-3" />
   </head>
   <body>
     <div class="app-shell">
@@ -22,6 +22,9 @@
           </a>
           <a class="nav-link" id="notesPageLink" href="#notes">
             <span>キャラメモ</span>
+          </a>
+          <a class="nav-link" id="practicePageLink" href="#practice">
+            <span>練習</span>
           </a>
         </nav>
         <button class="text-button" id="changeCharacterButton" type="button" hidden>キャラ変更</button>
@@ -180,6 +183,59 @@
             </div>
           </form>
         </section>
+
+        <section class="page-view practice" id="practice" aria-labelledby="practice-title" hidden>
+          <div class="panel-heading compact-heading">
+            <div>
+              <p class="eyebrow">Practice</p>
+              <h2 id="practice-title">コンボ練習</h2>
+            </div>
+            <span class="selected-character-pill current-character-label">未選択</span>
+          </div>
+
+          <div class="practice-empty empty-state" id="practiceEmpty">保存済みコンボから練習を開始してください</div>
+
+          <div class="practice-body" id="practiceBody" hidden>
+            <div class="practice-hero">
+              <div>
+                <p class="character" id="practiceCharacter"></p>
+                <h3 id="practiceTitle"></h3>
+              </div>
+              <div class="card-tags" id="practiceTags"></div>
+            </div>
+
+            <div class="practice-recipe card-recipe" id="practiceRecipe"></div>
+            <p class="card-notes" id="practiceComboNotes"></p>
+
+            <div class="practice-stats">
+              <div><span>成功率</span><strong id="practiceSuccessRate">0%</strong></div>
+              <div><span>回数</span><strong id="practiceAttempts">0</strong></div>
+              <div><span>最終練習</span><strong id="practiceLast">-</strong></div>
+            </div>
+
+            <label>
+              <span>ステータス</span>
+              <select id="practiceStatus">
+                <option value="new">未練習</option>
+                <option value="training">練習中</option>
+                <option value="stable">安定</option>
+                <option value="match">実戦投入</option>
+              </select>
+            </label>
+
+            <label>
+              <span>練習メモ</span>
+              <textarea id="practiceNoteInput" rows="4" placeholder="失敗しやすい箇所、意識することなど"></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button class="primary-button" id="practiceSuccessButton" type="button">成功</button>
+              <button class="ghost-button" id="practiceFailureButton" type="button">失敗</button>
+              <button class="ghost-button" id="practiceSaveButton" type="button">練習メモ保存</button>
+              <button class="ghost-button" id="practiceBackButton" type="button">保存済みに戻る</button>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -196,6 +252,7 @@
         <div class="card-tags"></div>
         <p class="card-notes"></p>
         <div class="card-actions">
+          <button class="ghost-button practice-card" type="button">練習</button>
           <button class="ghost-button edit-card" type="button">編集</button>
           <button class="ghost-button share-card" type="button">共有</button>
           <button class="ghost-button copy-link-card" type="button">リンク</button>
@@ -205,6 +262,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260510-2"></script>
+    <script src="app.js?v=20260510-3"></script>
   </body>
 </html>
