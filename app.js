@@ -888,7 +888,7 @@ function getPracticeRecommendations() {
   const now = Date.now();
   const selectedCombos = state.combos.filter((combo) => !state.selectedCharacter || combo.character === state.selectedCharacter);
 
-  return selectedCombos
+  const candidates = selectedCombos
     .map((combo) => {
       const practice = getPracticeEntry(combo.id);
       const totals = getPracticeTotals(practice);
@@ -896,17 +896,58 @@ function getPracticeRecommendations() {
       const attempts = totals.success + totals.failure;
       const rate = attempts ? Math.round((totals.success / attempts) * 100) : 0;
       const daysSincePractice = totals.lastPracticedAt ? (now - totals.lastPracticedAt) / 86400000 : Infinity;
+      const difficulty = getPracticeDifficulty(combo);
       const weakPointBoost = practice.weakPoint ? 20 : 0;
       const favoriteBoost = combo.favorite ? 12 : 0;
       const staleBoost = Math.min(daysSincePractice, 14);
       const lowRateBoost = attempts ? Math.max(0, 80 - Math.min(rate, weakestSide.rate || rate)) : 45;
       const statusBoost = practice.status === "new" ? 35 : practice.status === "training" ? 20 : 0;
-      const score = weakPointBoost + favoriteBoost + staleBoost + lowRateBoost + statusBoost;
-      const reason = getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide);
-      return { combo, practice, attempts, rate, score, reason };
+      const difficultyBoost = difficulty === "basic" ? 8 : difficulty === "hard" ? 3 : 0;
+      const score = weakPointBoost + favoriteBoost + staleBoost + lowRateBoost + statusBoost + difficultyBoost;
+      const reason = getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide, difficulty);
+      return { combo, practice, attempts, rate, score, reason, difficulty };
     })
-    .sort((a, b) => b.score - a.score || b.combo.updatedAt - a.combo.updatedAt)
-    .slice(0, 5);
+    .sort(sortPracticeCandidate);
+
+  return balancePracticeRecommendations(candidates);
+}
+
+function balancePracticeRecommendations(candidates) {
+  const maxItems = 5;
+  const hardTarget = candidates.length >= 4 ? 1 : 0;
+  const selected = [];
+  const selectedIds = new Set();
+  const basics = candidates.filter((item) => item.difficulty !== "hard");
+  const hard = candidates.filter((item) => item.difficulty === "hard");
+
+  basics.slice(0, Math.max(0, maxItems - hardTarget)).forEach((item) => addPracticeRecommendation(item, selected, selectedIds, maxItems));
+  hard.slice(0, hardTarget).forEach((item) => addPracticeRecommendation(item, selected, selectedIds, maxItems));
+  candidates.forEach((item) => addPracticeRecommendation(item, selected, selectedIds, maxItems));
+
+  return selected.sort(sortPracticeCandidate);
+}
+
+function addPracticeRecommendation(item, selected, selectedIds, maxItems) {
+  if (selected.length >= maxItems || selectedIds.has(item.combo.id)) return;
+  selected.push(item);
+  selectedIds.add(item.combo.id);
+}
+
+function sortPracticeCandidate(a, b) {
+  return b.score - a.score || b.combo.updatedAt - a.combo.updatedAt;
+}
+
+function getPracticeDifficulty(combo) {
+  const text = `${combo.title} ${combo.tags.join(" ")}`.toLowerCase();
+  if (/(難|高難度|応用|上級|advanced|hard|difficult)/i.test(text)) return "hard";
+  if (/(基本|基礎|初級|簡単|安定|basic|beginner|easy|bnb|b&b)/i.test(text)) return "basic";
+
+  const groupedRecipe = groupRecipeForDisplay(combo.recipe);
+  const commandCount = groupedRecipe.length;
+  const hasAdvancedTool = groupedRecipe.some((step) => /DR|Dラッシュ|PC|CH|SA[123]|CA/.test(step.value));
+  if (commandCount >= 7 || (commandCount >= 5 && hasAdvancedTool)) return "hard";
+  if (commandCount <= 4 && !hasAdvancedTool) return "basic";
+  return "middle";
 }
 
 function getWeakestPracticeSide(practice) {
@@ -920,13 +961,15 @@ function getWeakestPracticeSide(practice) {
     .sort((a, b) => a.rate - b.rate || a.attempts - b.attempts)[0];
 }
 
-function getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide) {
+function getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide, difficulty) {
   if (practice.weakPoint) return "苦手ポイントあり";
   if (!attempts) return "未練習";
   if (weakestSide?.attempts && weakestSide.rate < 70) return `${practiceSideLabels[weakestSide.side]}成功率低め`;
   if (rate < 70) return "成功率低め";
   if (daysSincePractice >= 7) return "最近未練習";
   if (combo.favorite) return "お気に入り";
+  if (difficulty === "basic") return "基本練習";
+  if (difficulty === "hard") return "難しめも少し";
   return "継続練習";
 }
 
