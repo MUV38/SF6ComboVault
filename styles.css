@@ -898,6 +898,72 @@ button:focus-visible {
   font-size: 22px;
 }
 
+.practice-recommend-panel,
+.practice-dashboard {
+  display: grid;
+  gap: 12px;
+  margin: clamp(14px, 2vw, 18px);
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #11141a;
+}
+
+.practice-recommend-list,
+.weak-point-list {
+  display: grid;
+  gap: 8px;
+}
+
+.practice-recommend-item,
+.weak-point-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #14171c;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.practice-recommend-item small,
+.weak-point-list span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.practice-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.practice-dashboard-grid div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #14171c;
+}
+
+.practice-dashboard-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.practice-dashboard-grid strong {
+  font-size: 22px;
+}
+
 .official-link-panel {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
@@ -1091,7 +1157,8 @@ button:focus-visible {
   }
 
   .practice-hero,
-  .practice-stats {
+  .practice-stats,
+  .practice-dashboard-grid {
     grid-template-columns: 1fr;
   }
 

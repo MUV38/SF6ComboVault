@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260510-3" />
+    <link rel="stylesheet" href="styles.css?v=20260510-4" />
   </head>
   <body>
     <div class="app-shell">
@@ -163,6 +163,8 @@
 
             <div class="official-link-panel" id="officialLinkPanel" hidden></div>
 
+            <div class="practice-dashboard" id="practiceDashboard"></div>
+
             <label>
               <span>メモ</span>
               <textarea id="characterNoteInput" rows="7" placeholder="対策、よく使う始動、セットプレイ、苦手ポイントなど"></textarea>
@@ -195,6 +197,16 @@
 
           <div class="practice-empty empty-state" id="practiceEmpty">保存済みコンボから練習を開始してください</div>
 
+          <div class="practice-recommend-panel">
+            <div class="linked-heading">
+              <div>
+                <p class="eyebrow">Today</p>
+                <h3>今日の練習リスト</h3>
+              </div>
+            </div>
+            <div class="practice-recommend-list" id="practiceRecommendList"></div>
+          </div>
+
           <div class="practice-body" id="practiceBody" hidden>
             <div class="practice-hero">
               <div>
@@ -226,6 +238,11 @@
             <label>
               <span>練習メモ</span>
               <textarea id="practiceNoteInput" rows="4" placeholder="失敗しやすい箇所、意識することなど"></textarea>
+            </label>
+
+            <label>
+              <span>苦手ポイント</span>
+              <textarea id="practiceWeakPointInput" rows="3" placeholder="例: DR後の中Pが遅れる、端限定で距離がズレる"></textarea>
             </label>
 
             <div class="form-actions">
@@ -262,6 +279,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260510-3"></script>
+    <script src="app.js?v=20260510-4"></script>
   </body>
 </html>
