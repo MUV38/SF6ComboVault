@@ -198,7 +198,7 @@ async function init() {
   state.characterNotes = loadCharacterNotes();
   state.selectedCharacter = loadSelectedCharacter();
   renderCharacterOptions();
-  await hydrateSharedData(false);
+  notifySharedDataAvailable();
   renderCharacterGrid();
   applySelectedCharacter(false);
   renderCommandTabs();
@@ -877,6 +877,13 @@ async function hydrateSharedData(notifyWhenMissing = true) {
     goToPage("library");
   } catch {
     showToast("共有データを読み込めませんでした");
+  }
+}
+
+function notifySharedDataAvailable() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("vault") || params.has("combo")) {
+    showToast("共有データがあります。読み込みボタンで取り込めます");
   }
 }
 
