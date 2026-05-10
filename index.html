@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SF6 Combo Vault</title>
-    <link rel="stylesheet" href="styles.css?v=20260510-4" />
+    <link rel="stylesheet" href="styles.css?v=20260510-5" />
   </head>
   <body>
     <div class="app-shell">
@@ -219,6 +219,14 @@
             <div class="practice-recipe card-recipe" id="practiceRecipe"></div>
             <p class="card-notes" id="practiceComboNotes"></p>
 
+            <div class="practice-side-panel">
+              <div class="practice-side-toggle" id="practiceSideToggle" role="tablist" aria-label="練習サイド">
+                <button class="active" type="button" data-practice-side="p1" aria-selected="true">1P側</button>
+                <button type="button" data-practice-side="p2" aria-selected="false">2P側</button>
+              </div>
+              <div class="practice-side-breakdown" id="practiceSideBreakdown"></div>
+            </div>
+
             <div class="practice-stats">
               <div><span>成功率</span><strong id="practiceSuccessRate">0%</strong></div>
               <div><span>回数</span><strong id="practiceAttempts">0</strong></div>
@@ -279,6 +287,6 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260510-4"></script>
+    <script src="app.js?v=20260510-5"></script>
   </body>
 </html>

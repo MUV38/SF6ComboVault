@@ -96,6 +96,11 @@ const odCommand = "OD";
 const tcCommand = "TC";
 const modifierCommands = new Set([odCommand, tcCommand]);
 const attackCommands = new Set(commandGroups.attack.commands.filter((command) => !modifierCommands.has(command)));
+const practiceSides = ["p1", "p2"];
+const practiceSideLabels = {
+  p1: "1P側",
+  p2: "2P側"
+};
 const commandDisplayMap = {
   "1": "↙",
   "2": "↓",
@@ -134,6 +139,7 @@ const state = {
   practiceData: {},
   selectedCharacter: "",
   activePracticeId: "",
+  activePracticeSide: "p1",
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -203,6 +209,8 @@ const els = {
   practiceLast: $("#practiceLast"),
   practiceNoteInput: $("#practiceNoteInput"),
   practiceWeakPointInput: $("#practiceWeakPointInput"),
+  practiceSideBreakdown: $("#practiceSideBreakdown"),
+  practiceSideButtons: Array.from(document.querySelectorAll("[data-practice-side]")),
   practiceRecommendList: $("#practiceRecommendList"),
   practiceDashboard: $("#practiceDashboard"),
   practiceSuccessButton: $("#practiceSuccessButton"),
@@ -294,6 +302,12 @@ function bindEvents() {
   els.practiceSaveButton.addEventListener("click", savePracticeSettings);
   els.practiceStatus.addEventListener("change", savePracticeSettings);
   els.practiceBackButton.addEventListener("click", () => goToPage("library"));
+  els.practiceSideButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activePracticeSide = button.dataset.practiceSide;
+      renderPractice();
+    });
+  });
 }
 
 function showCurrentPage() {
@@ -579,8 +593,9 @@ function renderList() {
     card.querySelector(".card-recipe").innerHTML = groupRecipeForDisplay(combo.recipe).map(renderToken).join("");
     card.querySelector(".card-tags").innerHTML = combo.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
     const practice = getPracticeEntry(combo.id);
-    const attempts = practice.success + practice.failure;
-    const rate = attempts ? Math.round((practice.success / attempts) * 100) : 0;
+    const totals = getPracticeTotals(practice);
+    const attempts = totals.success + totals.failure;
+    const rate = attempts ? Math.round((totals.success / attempts) * 100) : 0;
     card.querySelector(".practice-card").textContent = attempts ? `練習 ${rate}%` : "練習";
 
     const notes = card.querySelector(".card-notes");
@@ -690,8 +705,9 @@ function renderPractice() {
   if (!combo) return;
 
   const practice = getPracticeEntry(combo.id);
-  const attempts = practice.success + practice.failure;
-  const rate = attempts ? Math.round((practice.success / attempts) * 100) : 0;
+  const sideStats = getPracticeSideStats(practice, state.activePracticeSide);
+  const attempts = sideStats.success + sideStats.failure;
+  const rate = attempts ? Math.round((sideStats.success / attempts) * 100) : 0;
 
   els.practiceTitle.textContent = combo.title;
   els.practiceCharacter.textContent = combo.character;
@@ -702,26 +718,88 @@ function renderPractice() {
   els.practiceStatus.value = practice.status;
   els.practiceSuccessRate.textContent = `${rate}%`;
   els.practiceAttempts.textContent = `${attempts}回`;
-  els.practiceLast.textContent = practice.lastPracticedAt ? formatPracticeDate(practice.lastPracticedAt) : "-";
+  els.practiceLast.textContent = sideStats.lastPracticedAt ? formatPracticeDate(sideStats.lastPracticedAt) : "-";
   els.practiceNoteInput.value = practice.note;
   els.practiceWeakPointInput.value = practice.weakPoint;
+  renderPracticeSideState(practice);
 }
 
 function getPracticeEntry(comboId) {
   const practice = state.practiceData[comboId] || {};
+  const sides = normalizePracticeSides(practice.sides);
   return {
     status: ["new", "training", "stable", "match"].includes(practice.status) ? practice.status : "new",
     success: Number(practice.success) || 0,
     failure: Number(practice.failure) || 0,
     note: typeof practice.note === "string" ? practice.note : "",
     weakPoint: typeof practice.weakPoint === "string" ? practice.weakPoint : "",
-    lastPracticedAt: Number(practice.lastPracticedAt) || 0
+    lastPracticedAt: Number(practice.lastPracticedAt) || 0,
+    sides
   };
+}
+
+function normalizePracticeSides(sides) {
+  return practiceSides.reduce((normalized, side) => {
+    normalized[side] = normalizePracticeSide(sides?.[side]);
+    return normalized;
+  }, {});
+}
+
+function normalizePracticeSide(side) {
+  return {
+    success: Number(side?.success) || 0,
+    failure: Number(side?.failure) || 0,
+    lastPracticedAt: Number(side?.lastPracticedAt) || 0
+  };
+}
+
+function getPracticeSideStats(practice, side) {
+  return normalizePracticeSide(practice.sides?.[side]);
+}
+
+function getPracticeTotals(practice) {
+  return {
+    success: practice.success,
+    failure: practice.failure,
+    lastPracticedAt: practice.lastPracticedAt
+  };
+}
+
+function renderPracticeSideState(practice) {
+  els.practiceSideButtons.forEach((button) => {
+    const isActive = button.dataset.practiceSide === state.activePracticeSide;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  els.practiceSideBreakdown.innerHTML = practiceSides.map((side) => {
+    const stats = getPracticeSideStats(practice, side);
+    const attempts = stats.success + stats.failure;
+    const rate = attempts ? Math.round((stats.success / attempts) * 100) : 0;
+    const isActive = side === state.activePracticeSide;
+    return `
+      <button class="${isActive ? "active" : ""}" type="button" data-practice-side-card="${side}">
+        <span>${practiceSideLabels[side]}</span>
+        <strong>${attempts ? `${rate}%` : "未"}</strong>
+        <small>${attempts}回</small>
+      </button>
+    `;
+  }).join("");
+
+  els.practiceSideBreakdown.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activePracticeSide = button.dataset.practiceSideCard;
+      renderPractice();
+    });
+  });
 }
 
 function recordPracticeAttempt(isSuccess) {
   if (!state.activePracticeId) return;
   const practice = getPracticeEntry(state.activePracticeId);
+  const side = state.activePracticeSide;
+  const sideStats = getPracticeSideStats(practice, side);
+  const now = Date.now();
   state.practiceData[state.activePracticeId] = {
     ...practice,
     status: practice.status === "new" ? "training" : practice.status,
@@ -729,7 +807,16 @@ function recordPracticeAttempt(isSuccess) {
     failure: practice.failure + (isSuccess ? 0 : 1),
     note: els.practiceNoteInput.value.trim(),
     weakPoint: els.practiceWeakPointInput.value.trim(),
-    lastPracticedAt: Date.now()
+    lastPracticedAt: now,
+    sides: {
+      ...practice.sides,
+      [side]: {
+        ...sideStats,
+        success: sideStats.success + (isSuccess ? 1 : 0),
+        failure: sideStats.failure + (isSuccess ? 0 : 1),
+        lastPracticedAt: now
+      }
+    }
   };
   persistPracticeData();
   renderPractice();
@@ -793,25 +880,39 @@ function getPracticeRecommendations() {
   return selectedCombos
     .map((combo) => {
       const practice = getPracticeEntry(combo.id);
-      const attempts = practice.success + practice.failure;
-      const rate = attempts ? Math.round((practice.success / attempts) * 100) : 0;
-      const daysSincePractice = practice.lastPracticedAt ? (now - practice.lastPracticedAt) / 86400000 : Infinity;
+      const totals = getPracticeTotals(practice);
+      const weakestSide = getWeakestPracticeSide(practice);
+      const attempts = totals.success + totals.failure;
+      const rate = attempts ? Math.round((totals.success / attempts) * 100) : 0;
+      const daysSincePractice = totals.lastPracticedAt ? (now - totals.lastPracticedAt) / 86400000 : Infinity;
       const weakPointBoost = practice.weakPoint ? 20 : 0;
       const favoriteBoost = combo.favorite ? 12 : 0;
       const staleBoost = Math.min(daysSincePractice, 14);
-      const lowRateBoost = attempts ? Math.max(0, 80 - rate) : 45;
+      const lowRateBoost = attempts ? Math.max(0, 80 - Math.min(rate, weakestSide.rate || rate)) : 45;
       const statusBoost = practice.status === "new" ? 35 : practice.status === "training" ? 20 : 0;
       const score = weakPointBoost + favoriteBoost + staleBoost + lowRateBoost + statusBoost;
-      const reason = getPracticeReason(practice, combo, rate, attempts, daysSincePractice);
+      const reason = getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide);
       return { combo, practice, attempts, rate, score, reason };
     })
     .sort((a, b) => b.score - a.score || b.combo.updatedAt - a.combo.updatedAt)
     .slice(0, 5);
 }
 
-function getPracticeReason(practice, combo, rate, attempts, daysSincePractice) {
+function getWeakestPracticeSide(practice) {
+  return practiceSides
+    .map((side) => {
+      const stats = getPracticeSideStats(practice, side);
+      const attempts = stats.success + stats.failure;
+      const rate = attempts ? Math.round((stats.success / attempts) * 100) : 0;
+      return { side, attempts, rate };
+    })
+    .sort((a, b) => a.rate - b.rate || a.attempts - b.attempts)[0];
+}
+
+function getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide) {
   if (practice.weakPoint) return "苦手ポイントあり";
   if (!attempts) return "未練習";
+  if (weakestSide?.attempts && weakestSide.rate < 70) return `${practiceSideLabels[weakestSide.side]}成功率低め`;
   if (rate < 70) return "成功率低め";
   if (daysSincePractice >= 7) return "最近未練習";
   if (combo.favorite) return "お気に入り";
@@ -827,9 +928,21 @@ function renderPracticeDashboard() {
   }
 
   const entries = combos.map((combo) => ({ combo, practice: getPracticeEntry(combo.id) }));
-  const totalAttempts = entries.reduce((sum, item) => sum + item.practice.success + item.practice.failure, 0);
-  const totalSuccess = entries.reduce((sum, item) => sum + item.practice.success, 0);
+  const totalsByEntry = entries.map((item) => getPracticeTotals(item.practice));
+  const totalAttempts = totalsByEntry.reduce((sum, totals) => sum + totals.success + totals.failure, 0);
+  const totalSuccess = totalsByEntry.reduce((sum, totals) => sum + totals.success, 0);
   const averageRate = totalAttempts ? Math.round((totalSuccess / totalAttempts) * 100) : 0;
+  const sideSummary = practiceSides.map((side) => {
+    const stats = entries.reduce((totals, item) => {
+      const sideStats = getPracticeSideStats(item.practice, side);
+      totals.success += sideStats.success;
+      totals.failure += sideStats.failure;
+      return totals;
+    }, { success: 0, failure: 0 });
+    const attempts = stats.success + stats.failure;
+    const rate = attempts ? Math.round((stats.success / attempts) * 100) : 0;
+    return { side, attempts, rate };
+  });
   const statusCounts = entries.reduce((counts, item) => {
     counts[item.practice.status] = (counts[item.practice.status] || 0) + 1;
     return counts;
@@ -841,6 +954,9 @@ function renderPracticeDashboard() {
       <div><span>保存コンボ</span><strong>${combos.length}</strong></div>
       <div><span>平均成功率</span><strong>${averageRate}%</strong></div>
       <div><span>練習回数</span><strong>${totalAttempts}</strong></div>
+      ${sideSummary.map((summary) => `
+        <div><span>${practiceSideLabels[summary.side]}</span><strong>${summary.attempts ? `${summary.rate}%` : "-"}</strong></div>
+      `).join("")}
       <div><span>練習中</span><strong>${statusCounts.training || 0}</strong></div>
       <div><span>安定</span><strong>${statusCounts.stable || 0}</strong></div>
       <div><span>実戦投入</span><strong>${statusCounts.match || 0}</strong></div>
@@ -1217,7 +1333,8 @@ function mergePracticeData(importedPracticeData, idMap) {
       failure: Math.max(current.failure, imported.failure),
       note: mergeNoteText(current.note, imported.note),
       weakPoint: mergeNoteText(current.weakPoint, imported.weakPoint),
-      lastPracticedAt: Math.max(current.lastPracticedAt, imported.lastPracticedAt)
+      lastPracticedAt: Math.max(current.lastPracticedAt, imported.lastPracticedAt),
+      sides: mergePracticeSides(current.sides, imported.sides)
     };
   });
 }
@@ -1229,8 +1346,22 @@ function normalizePracticeEntry(practice) {
     failure: Number(practice?.failure) || 0,
     note: typeof practice?.note === "string" ? practice.note : "",
     weakPoint: typeof practice?.weakPoint === "string" ? practice.weakPoint : "",
-    lastPracticedAt: Number(practice?.lastPracticedAt) || 0
+    lastPracticedAt: Number(practice?.lastPracticedAt) || 0,
+    sides: normalizePracticeSides(practice?.sides)
   };
+}
+
+function mergePracticeSides(currentSides, importedSides) {
+  return practiceSides.reduce((merged, side) => {
+    const current = normalizePracticeSide(currentSides?.[side]);
+    const imported = normalizePracticeSide(importedSides?.[side]);
+    merged[side] = {
+      success: Math.max(current.success, imported.success),
+      failure: Math.max(current.failure, imported.failure),
+      lastPracticedAt: Math.max(current.lastPracticedAt, imported.lastPracticedAt)
+    };
+    return merged;
+  }, {});
 }
 
 function importCombo(combo) {
