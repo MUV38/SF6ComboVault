@@ -140,6 +140,7 @@ const state = {
   selectedCharacter: "",
   activePracticeId: "",
   activePracticeSide: "p1",
+  returnPageAfterCharacterSelect: "",
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -249,7 +250,7 @@ async function init() {
 function bindEvents() {
   window.addEventListener("hashchange", showCurrentPage);
   window.addEventListener("popstate", showCurrentPage);
-  els.changeCharacterButton.addEventListener("click", () => goToPage("characters"));
+  els.changeCharacterButton.addEventListener("click", () => openCharacterPicker());
   els.exportVaultButton.addEventListener("click", exportVaultData);
   els.importVaultButton.addEventListener("click", () => hydrateSharedData(true));
   els.exportJsonButton.addEventListener("click", exportVaultJson);
@@ -376,6 +377,12 @@ function goToPage(page) {
   renderPage(page);
 }
 
+function openCharacterPicker() {
+  const currentPage = getCurrentPage();
+  state.returnPageAfterCharacterSelect = currentPage === "characters" ? "create" : currentPage;
+  goToPage("characters");
+}
+
 function getCurrentPage() {
   if (location.hash === "#characters") return "characters";
   if (location.hash === "#library") return "library";
@@ -469,7 +476,11 @@ function selectCharacter(character, navigateToCreate = true) {
   persistSelectedCharacter();
   applySelectedCharacter();
   renderCharacterGrid();
-  if (navigateToCreate) goToPage("create");
+  if (navigateToCreate) {
+    const nextPage = state.returnPageAfterCharacterSelect || "create";
+    state.returnPageAfterCharacterSelect = "";
+    goToPage(nextPage);
+  }
 }
 
 function applySelectedCharacter(renderAfterApply = true) {
