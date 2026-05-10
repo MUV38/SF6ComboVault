@@ -141,6 +141,7 @@ const state = {
   activePracticeId: "",
   activePracticeSide: "p1",
   returnPageAfterCharacterSelect: "",
+  practiceRecommendationSeed: 0,
   recipe: [],
   activeCommandGroup: "motion",
   favoriteDraft: false,
@@ -212,6 +213,7 @@ const els = {
   practiceWeakPointInput: $("#practiceWeakPointInput"),
   practiceSideBreakdown: $("#practiceSideBreakdown"),
   practiceSideButtons: Array.from(document.querySelectorAll("[data-practice-side]")),
+  regeneratePracticeListButton: $("#regeneratePracticeListButton"),
   practiceRecommendList: $("#practiceRecommendList"),
   practiceDashboard: $("#practiceDashboard"),
   practiceSuccessButton: $("#practiceSuccessButton"),
@@ -302,6 +304,7 @@ function bindEvents() {
   els.practiceFailureButton.addEventListener("click", () => recordPracticeAttempt(false));
   els.practiceSaveButton.addEventListener("click", savePracticeSettings);
   els.practiceStatus.addEventListener("change", savePracticeSettings);
+  els.regeneratePracticeListButton.addEventListener("click", regeneratePracticeRecommendations);
   els.practiceBackButton.addEventListener("click", () => goToPage("library"));
   els.practiceSideButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -884,6 +887,12 @@ function renderPracticeRecommendations() {
   });
 }
 
+function regeneratePracticeRecommendations() {
+  state.practiceRecommendationSeed += 1;
+  renderPracticeRecommendations();
+  showToast("今日の練習リストを再生成しました");
+}
+
 function getPracticeRecommendations() {
   const now = Date.now();
   const selectedCombos = state.combos.filter((combo) => !state.selectedCharacter || combo.character === state.selectedCharacter);
@@ -903,13 +912,23 @@ function getPracticeRecommendations() {
       const lowRateBoost = attempts ? Math.max(0, 80 - Math.min(rate, weakestSide.rate || rate)) : 45;
       const statusBoost = practice.status === "new" ? 35 : practice.status === "training" ? 20 : 0;
       const difficultyBoost = difficulty === "basic" ? 8 : difficulty === "hard" ? 3 : 0;
-      const score = weakPointBoost + favoriteBoost + staleBoost + lowRateBoost + statusBoost + difficultyBoost;
+      const rotationBoost = state.practiceRecommendationSeed ? getPracticeRotationBoost(combo, state.practiceRecommendationSeed) : 0;
+      const score = weakPointBoost + favoriteBoost + staleBoost + lowRateBoost + statusBoost + difficultyBoost + rotationBoost;
       const reason = getPracticeReason(practice, combo, rate, attempts, daysSincePractice, weakestSide, difficulty);
       return { combo, practice, attempts, rate, score, reason, difficulty };
     })
     .sort(sortPracticeCandidate);
 
   return balancePracticeRecommendations(candidates);
+}
+
+function getPracticeRotationBoost(combo, seed) {
+  const source = `${combo.id}:${seed}`;
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) % 997;
+  }
+  return (hash % 18) - 5;
 }
 
 function balancePracticeRecommendations(candidates) {
